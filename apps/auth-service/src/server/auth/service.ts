@@ -466,6 +466,53 @@ export async function getCurrentUserFromAccessToken(token: string): Promise<User
   return toUserDTO(user);
 }
 
+export async function hasServiceConsent(input: { userId: string; serviceId: string }): Promise<boolean> {
+  const row = await prisma.serviceConsent.findUnique({
+    where: {
+      userId_serviceId: {
+        userId: input.userId,
+        serviceId: input.serviceId
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+
+  return Boolean(row);
+}
+
+export async function grantServiceConsent(input: { userId: string; serviceId: string }): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceConsent.upsert({
+      where: {
+        userId_serviceId: {
+          userId: input.userId,
+          serviceId: input.serviceId
+        }
+      },
+      create: {
+        userId: input.userId,
+        serviceId: input.serviceId
+      },
+      update: {}
+    });
+
+    await tx.auditLog.create({
+      data: {
+        actorType: ActorType.USER,
+        actorId: input.userId,
+        action: "AUTH_SERVICE_CONSENT_GRANTED",
+        targetType: "ServiceConsent",
+        targetId: input.serviceId,
+        metadata: {
+          serviceId: input.serviceId
+        }
+      }
+    });
+  });
+}
+
 export async function requireAdminFromAccessToken(token: string): Promise<UserDTO> {
   const currentUser = await getCurrentUserFromAccessToken(token);
 

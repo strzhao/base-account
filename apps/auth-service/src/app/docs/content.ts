@@ -1,4 +1,4 @@
-export const DOC_VERSION = "2026-03-02.1";
+export const DOC_VERSION = "2026-03-03.1";
 export const ISSUER = "https://user.stringzhao.life";
 export const AUDIENCE = "base-account-client";
 export const JWKS_URL = `${ISSUER}/.well-known/jwks.json`;
@@ -36,7 +36,7 @@ export const quickStartSteps: QuickStep[] = [
   },
   {
     title: "打通登录流程",
-    detail: "前端按 send-code -> verify-code -> me 流程获取并验证用户态。"
+    detail: "外部服务先跳 /authorize，账号中心内部按 send-code -> verify-code -> me 完成登录。"
   },
   {
     title: "上线前回归",
@@ -45,6 +45,15 @@ export const quickStartSteps: QuickStep[] = [
 ];
 
 export const endpointSpecs: EndpointSpec[] = [
+  {
+    method: "GET",
+    path: "/authorize",
+    auth: "none",
+    purpose: "统一授权入口。未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。",
+    requestExample: `?service=base-account-client&return_to=https%3A%2F%2Fuser.stringzhao.life%2Fapp&state=opaque-state`,
+    responseExample: `302 -> /login?... 或 302 -> return_to?authorized=1&state=opaque-state`,
+    errorNotes: ["400 invalid_authorize_request", "400 invalid_return_to", "400 invalid_service"]
+  },
   {
     method: "POST",
     path: "/api/auth/send-code",
@@ -78,6 +87,22 @@ export const endpointSpecs: EndpointSpec[] = [
   }
 }`,
     errorNotes: ["400 invalid_code", "429 too_many_attempts", "403 account_disabled"]
+  },
+  {
+    method: "POST",
+    path: "/api/auth/authorize/approve",
+    auth: "access_token",
+    purpose: "用户在首次授权页点击同意后写入 consent 记录并返回回跳地址。",
+    requestExample: `{
+  "service": "base-account-client",
+  "return_to": "https://user.stringzhao.life/app",
+  "state": "opaque-state"
+}`,
+    responseExample: `{
+  "success": true,
+  "redirectTo": "https://user.stringzhao.life/app?authorized=1&state=opaque-state"
+}`,
+    errorNotes: ["401 missing_access_token", "400 invalid_input", "400 invalid_return_to", "400 invalid_service"]
   },
   {
     method: "POST",
@@ -243,6 +268,19 @@ const me = await fetch("https://user.stringzhao.life/api/auth/me", {
 }).then((r) => r.json());
 
 console.log(me.user);`
+  },
+  {
+    id: "frontend-authorize-entry",
+    title: "外部服务统一授权入口",
+    runtime: "Browser / Web App",
+    code: `const state = crypto.randomUUID();
+const returnTo = encodeURIComponent("https://user.stringzhao.life/app");
+
+window.location.href =
+  "https://user.stringzhao.life/authorize" +
+  "?service=base-account-client" +
+  "&return_to=" + returnTo +
+  "&state=" + encodeURIComponent(state);`
   }
 ];
 
@@ -250,6 +288,7 @@ export const rolloutChecklist: string[] = [
   "AUTH_ISSUER 与账号服务域名保持一致（当前: https://user.stringzhao.life）。",
   "AUTH_AUDIENCE 在账号服务和下游服务严格一致（当前: base-account-client）。",
   "AUTH_JWKS_URL 配置为 https://user.stringzhao.life/.well-known/jwks.json。",
+  "外部服务统一从 /authorize 进入登录授权流程，不直接拼接 /login。",
   "业务接口对 401/403/429 做显式处理，不把鉴权失败当系统异常。",
   "上线后至少做一次 send-code / verify-code / me 全链路回归。"
 ];
@@ -271,7 +310,7 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
 
 export const machineReadableSpec = {
   docVersion: DOC_VERSION,
-  generatedAt: "2026-03-02",
+  generatedAt: "2026-03-03",
   service: "base-account-auth",
   issuer: ISSUER,
   audience: AUDIENCE,

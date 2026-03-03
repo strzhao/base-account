@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import type { Route } from "next";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 
 type SendCodeResponse = {
   success: boolean;
@@ -20,7 +21,27 @@ function extractErrorMessage(payload: VerifyResponse | null): string {
 }
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageFallback() {
+  return (
+    <main className="page-shell">
+      <section className="panel" style={{ maxWidth: 520, margin: "0 auto" }}>
+        <h1>Login</h1>
+        <p>Loading login context...</p>
+      </section>
+    </main>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -31,6 +52,21 @@ export default function LoginPage() {
   const [debugCode, setDebugCode] = useState<string | null>(null);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const authorizePath = useMemo(() => {
+    const service = searchParams.get("service")?.trim();
+    const returnTo = searchParams.get("return_to")?.trim();
+    const state = searchParams.get("state")?.trim();
+
+    if (!service || !returnTo || !state) {
+      return null;
+    }
+
+    const query = new URLSearchParams();
+    query.set("service", service);
+    query.set("return_to", returnTo);
+    query.set("state", state);
+    return `/authorize?${query.toString()}`;
+  }, [searchParams]);
 
   async function onSendCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,7 +122,7 @@ export default function LoginPage() {
       }
 
       setMessage("Login successful.");
-      router.push("/admin");
+      router.push((authorizePath ?? "/admin") as Route);
     } finally {
       setBusy(false);
     }
@@ -96,7 +132,11 @@ export default function LoginPage() {
     <main className="page-shell">
       <section className="panel" style={{ maxWidth: 520, margin: "0 auto" }}>
         <h1>Login</h1>
-        <p>Enter your email to receive a one-time verification code.</p>
+        <p>
+          {authorizePath
+            ? "Sign in to continue authorization for your external service."
+            : "Enter your email to receive a one-time verification code."}
+        </p>
 
         {step === "email" ? (
           <form onSubmit={onSendCode}>

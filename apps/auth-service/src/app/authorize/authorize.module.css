@@ -1,0 +1,102 @@
+.shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 20px 80px;
+}
+
+.panel {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #d8dee8;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow:
+    0 24px 44px rgba(15, 23, 42, 0.08),
+    0 2px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+.kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0f766e;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 10px 0 10px;
+  font-size: clamp(1.4rem, 3.6vw, 2rem);
+}
+
+.summary {
+  margin: 0;
+  color: #4b5563;
+}
+
+.meta {
+  margin-top: 18px;
+  background: #ffffff;
+  border: 1px solid #dbe2ec;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.metaRow {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.value {
+  margin: 0;
+  word-break: break-word;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.error {
+  margin-top: 14px;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #ccfbf1;
+  color: #134e4a;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 24px 12px 40px;
+  }
+}
