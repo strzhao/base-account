@@ -25,12 +25,33 @@ const AUTH_TOKEN_ERROR_NAMES = new Set([
   "JWSSignatureVerificationFailed"
 ]);
 
+function hasAuthTokenErrorCode(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybeCode = (error as { code?: unknown }).code;
+  if (typeof maybeCode !== "string") {
+    return false;
+  }
+
+  return (
+    maybeCode.startsWith("ERR_JWT_") ||
+    maybeCode.startsWith("ERR_JWS_") ||
+    maybeCode.startsWith("ERR_JWKS_")
+  );
+}
+
 function isAuthFailure(error: unknown): boolean {
   if (error instanceof AuthError) {
     return true;
   }
 
-  return error instanceof Error && AUTH_TOKEN_ERROR_NAMES.has(error.name);
+  if (error instanceof Error && AUTH_TOKEN_ERROR_NAMES.has(error.name)) {
+    return true;
+  }
+
+  return hasAuthTokenErrorCode(error);
 }
 
 export default async function AuthorizePage({ searchParams }: AuthorizePageProps) {
