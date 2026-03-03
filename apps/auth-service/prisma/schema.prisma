@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum EmailCodePurpose {
+  LOGIN
+}
+
+enum ActorType {
+  SYSTEM
+  ADMIN
+  USER
+}
+
+model User {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  status      UserStatus  @default(ACTIVE)
+  lastLoginAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  sessions    Session[]
+
+  @@index([status])
+}
+
+model EmailCode {
+  id           String           @id @default(cuid())
+  requestId    String           @unique
+  email        String
+  codeHash     String
+  purpose      EmailCodePurpose
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  attemptCount Int              @default(0)
+  createdAt    DateTime         @default(now())
+
+  @@index([email, purpose, createdAt])
+  @@index([expiresAt])
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  userAgent        String?
+  ip               String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+}
+
+model JwkKey {
+  id                  String   @id @default(cuid())
+  kid                 String   @unique
+  publicJwk           Json
+  privateKeyEncrypted String
+  status              String
+  createdAt           DateTime @default(now())
+}

@@ -1,0 +1,33 @@
+.wrap {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.button {
+  border: 1px solid #1f4e48;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2e5952 0%, #3f7a71 100%);
+  color: #f6f4ef;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(31, 78, 72, 0.28);
+  transition: transform 120ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.tip {
+  color: #5d564e;
+  font-size: 12px;
+  text-align: right;
+}
