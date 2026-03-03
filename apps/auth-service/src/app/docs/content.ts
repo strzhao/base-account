@@ -1,4 +1,4 @@
-export const DOC_VERSION = "2026-03-03.1";
+export const DOC_VERSION = "2026-03-03.2";
 export const ISSUER = "https://user.stringzhao.life";
 export const AUDIENCE = "base-account-client";
 export const JWKS_URL = `${ISSUER}/.well-known/jwks.json`;
@@ -31,16 +31,16 @@ export const quickStartSteps: QuickStep[] = [
     detail: "下游服务至少配置 AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL。"
   },
   {
-    title: "接入 JWT 校验",
-    detail: "使用 @stringzhao/auth-sdk 的 createRemoteJwksVerifier 校验 access token。"
+    title: "接入统一授权入口",
+    detail: "外部服务统一跳转 /authorize?service&return_to&state，禁止直接跳 /login。"
   },
   {
-    title: "打通登录流程",
-    detail: "外部服务先跳 /authorize，账号中心内部按 send-code -> verify-code -> me 完成登录。"
+    title: "处理回跳并拉取用户态",
+    detail: "回跳后先校验 state，再调用 /api/auth/me（credentials: include）获取当前用户。"
   },
   {
-    title: "上线前回归",
-    detail: "验证 /.well-known/jwks.json、/api/auth/send-code、/api/auth/me 三条关键链路。"
+    title: "按需接入 JWT 校验",
+    detail: "如果你的服务需要在后端验签 access token，再接入 auth-sdk 的 JWKS 验签。"
   }
 ];
 
@@ -52,7 +52,7 @@ export const endpointSpecs: EndpointSpec[] = [
     purpose: "统一授权入口。未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。",
     requestExample: `?service=base-account-client&return_to=https%3A%2F%2Fuser.stringzhao.life%2Fapp&state=opaque-state`,
     responseExample: `302 -> /login?... 或 302 -> return_to?authorized=1&state=opaque-state`,
-    errorNotes: ["400 invalid_authorize_request", "400 invalid_return_to", "400 invalid_service"]
+    errorNotes: ["400 invalid_authorize_request", "400 invalid_return_to", "400 invalid_service", "400 invalid_state"]
   },
   {
     method: "POST",
@@ -112,11 +112,7 @@ export const endpointSpecs: EndpointSpec[] = [
     responseExample: `{
   "accessToken": "<new-jwt>",
   "refreshToken": "<new-opaque>",
-  "user": {
-    "id": "usr_xxx",
-    "email": "user@example.com",
-    "status": "ACTIVE"
-  }
+  "expiresIn": 900
 }`,
     errorNotes: ["401 invalid_refresh_token", "400 missing_refresh_token"]
   },
@@ -136,11 +132,12 @@ export const endpointSpecs: EndpointSpec[] = [
     auth: "access_token",
     purpose: "获取当前 access token 对应用户信息。",
     responseExample: `{
-  "user": {
-    "id": "usr_xxx",
-    "email": "user@example.com",
-    "status": "ACTIVE"
-  }
+  "id": "usr_xxx",
+  "email": "user@example.com",
+  "status": "ACTIVE",
+  "createdAt": "2026-03-03T07:00:00.000Z",
+  "updatedAt": "2026-03-03T07:00:00.000Z",
+  "lastLoginAt": "2026-03-03T07:10:00.000Z"
 }`,
     errorNotes: ["401 missing_access_token", "401 invalid_access_token"]
   },
@@ -262,12 +259,12 @@ await fetch("https://user.stringzhao.life/api/auth/verify-code", {
   credentials: "include"
 });
 
-// 3) 获取当前用户
+// 3) 获取当前用户（/me 直接返回 user DTO）
 const me = await fetch("https://user.stringzhao.life/api/auth/me", {
   credentials: "include"
 }).then((r) => r.json());
 
-console.log(me.user);`
+console.log(me.id, me.email);`
   },
   {
     id: "frontend-authorize-entry",
@@ -281,6 +278,32 @@ window.location.href =
   "?service=base-account-client" +
   "&return_to=" + returnTo +
   "&state=" + encodeURIComponent(state);`
+  },
+  {
+    id: "frontend-authorize-callback",
+    title: "回跳校验 + 获取用户态",
+    runtime: "Browser / Web App",
+    code: `// 发起授权前保存 state
+const state = crypto.randomUUID();
+sessionStorage.setItem("auth_state", state);
+
+// ...跳转 /authorize 后，用户会回到 return_to
+const callback = new URL(window.location.href);
+const returnedState = callback.searchParams.get("state");
+const authorized = callback.searchParams.get("authorized");
+
+if (returnedState !== sessionStorage.getItem("auth_state")) {
+  throw new Error("state mismatch");
+}
+if (authorized !== "1") {
+  throw new Error("authorization not completed");
+}
+
+const me = await fetch("https://user.stringzhao.life/api/auth/me", {
+  credentials: "include"
+}).then((r) => r.json());
+
+console.log("authorized user:", me.email);`
   }
 ];
 
@@ -288,6 +311,7 @@ export const rolloutChecklist: string[] = [
   "AUTH_ISSUER 与账号服务域名保持一致（当前: https://user.stringzhao.life）。",
   "AUTH_AUDIENCE 在账号服务和下游服务严格一致（当前: base-account-client）。",
   "AUTH_JWKS_URL 配置为 https://user.stringzhao.life/.well-known/jwks.json。",
+  "接入前确认 serviceId 与 return_to origin 已在账号中心白名单注册。",
   "外部服务统一从 /authorize 进入登录授权流程，不直接拼接 /login。",
   "业务接口对 401/403/429 做显式处理，不把鉴权失败当系统异常。",
   "上线后至少做一次 send-code / verify-code / me 全链路回归。"
@@ -305,6 +329,14 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
   {
     title: "502 email_delivery_failed",
     fix: "检查 RESEND_API_KEY、RESEND_FROM_EMAIL、Resend 域名验证状态。"
+  },
+  {
+    title: "400 invalid_return_to",
+    fix: "当前 return_to 的 origin 未进入服务白名单，联系账号服务维护 serviceId -> allowedOrigins。"
+  },
+  {
+    title: "回跳后 state mismatch",
+    fix: "确认发起授权前本地持久化 state，并在回跳时严格比对 returned state。"
   }
 ];
 
@@ -315,6 +347,11 @@ export const machineReadableSpec = {
   issuer: ISSUER,
   audience: AUDIENCE,
   jwksUrl: JWKS_URL,
+  authorizeContract: {
+    entryPath: "/authorize",
+    requiredQuery: ["service", "return_to", "state"],
+    callbackQuery: ["authorized", "state"]
+  },
   endpoints: endpointSpecs.map((item) => ({
     method: item.method,
     path: item.path,
