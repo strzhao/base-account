@@ -1,8 +1,8 @@
 "use client";
 
 import type { Route } from "next";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./login.module.css";
 
@@ -18,6 +18,9 @@ type ApiResponse = {
   error?: string;
   message?: string;
 };
+
+const SESSION_READY_CHECK_RETRIES = 5;
+const SESSION_READY_CHECK_INTERVAL_MS = 120;
 
 function extractErrorMessage(payload: ApiResponse | null): string {
   switch (payload?.error) {
@@ -60,8 +63,8 @@ function LoginPageFallback() {
 }
 
 function LoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const checkedSessionRef = useRef(false);
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -87,6 +90,52 @@ function LoginPageContent() {
     query.set("state", state);
     return `/authorize?${query.toString()}`;
   }, [searchParams]);
+
+  async function waitForSessionReady(): Promise<boolean> {
+    for (let index = 0; index < SESSION_READY_CHECK_RETRIES; index += 1) {
+      if (index > 0) {
+        await new Promise((resolve) => setTimeout(resolve, SESSION_READY_CHECK_INTERVAL_MS));
+      }
+
+      const response = await fetch("/api/auth/me", {
+        cache: "no-store"
+      });
+
+      if (response.ok) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function continueAfterLogin(path: string) {
+    window.location.assign(path);
+  }
+
+  useEffect(() => {
+    if (!authorizePath || checkedSessionRef.current) {
+      return;
+    }
+
+    const targetPath = authorizePath;
+    checkedSessionRef.current = true;
+
+    let cancelled = false;
+
+    async function resumeAuthorizeIfLoggedIn() {
+      const ready = await waitForSessionReady();
+      if (!cancelled && ready) {
+        continueAfterLogin(targetPath);
+      }
+    }
+
+    void resumeAuthorizeIfLoggedIn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authorizePath]);
 
   async function onSendCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,7 +191,9 @@ function LoginPageContent() {
       }
 
       setMessage("登录成功，正在跳转...");
-      router.push((authorizePath ?? "/admin") as Route);
+
+      await waitForSessionReady();
+      continueAfterLogin((authorizePath ?? "/admin") as Route);
     } finally {
       setBusy(false);
     }
