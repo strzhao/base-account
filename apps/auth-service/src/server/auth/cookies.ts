@@ -6,10 +6,8 @@ const ACCESS_COOKIE = "access_token";
 const REFRESH_COOKIE = "refresh_token";
 const DEFAULT_PROD_COOKIE_DOMAIN = ".stringzhao.life";
 
-function getCookieDomain(): string {
-  const env = getEnv();
-  const normalizedDomain = env.AUTH_COOKIE_DOMAIN.trim();
-  return normalizedDomain || (env.NODE_ENV === "production" ? DEFAULT_PROD_COOKIE_DOMAIN : "");
+function getConfiguredCookieDomain(): string {
+  return getEnv().AUTH_COOKIE_DOMAIN.trim();
 }
 
 function getCookieBaseOptions(maxAge: number, domain?: string) {
@@ -25,41 +23,89 @@ function getCookieBaseOptions(maxAge: number, domain?: string) {
   };
 }
 
+function serializeCookie(name: string, value: string, maxAge: number, domain?: string): string {
+  const env = getEnv();
+  const parts = [`${name}=${encodeURIComponent(value)}`, "Path=/", `Max-Age=${maxAge}`, "SameSite=Lax", "HttpOnly"];
+
+  if (domain) {
+    parts.push(`Domain=${domain}`);
+  }
+  if (env.NODE_ENV === "production") {
+    parts.push("Secure");
+  }
+
+  return parts.join("; ");
+}
+
+function appendCookie(response: NextResponse, name: string, value: string, maxAge: number, domain?: string): void {
+  response.headers.append("set-cookie", serializeCookie(name, value, maxAge, domain));
+}
+
 export function setAuthCookies(
   response: NextResponse,
   accessToken: string,
   refreshToken: string
 ): void {
   const env = getEnv();
-  const cookieDomain = getCookieDomain();
+  const configuredDomain = getConfiguredCookieDomain();
 
-  // Clear host-only cookies first to avoid duplicate-name ambiguity across domain scopes.
-  response.cookies.set(ACCESS_COOKIE, "", { ...getCookieBaseOptions(0), maxAge: 0 });
-  response.cookies.set(REFRESH_COOKIE, "", { ...getCookieBaseOptions(0), maxAge: 0 });
+  if (configuredDomain) {
+    response.cookies.set(
+      ACCESS_COOKIE,
+      accessToken,
+      getCookieBaseOptions(env.ACCESS_TOKEN_EXPIRES_IN_SEC, configuredDomain)
+    );
+    response.cookies.set(
+      REFRESH_COOKIE,
+      refreshToken,
+      getCookieBaseOptions(env.REFRESH_TOKEN_EXPIRES_IN_SEC, configuredDomain)
+    );
 
-  response.cookies.set(
-    ACCESS_COOKIE,
-    accessToken,
-    getCookieBaseOptions(env.ACCESS_TOKEN_EXPIRES_IN_SEC, cookieDomain)
-  );
-  response.cookies.set(
-    REFRESH_COOKIE,
-    refreshToken,
-    getCookieBaseOptions(env.REFRESH_TOKEN_EXPIRES_IN_SEC, cookieDomain)
-  );
+    // Clear host-only scope to avoid legacy duplicate-cookie ambiguity.
+    appendCookie(response, ACCESS_COOKIE, "", 0);
+    appendCookie(response, REFRESH_COOKIE, "", 0);
+
+    if (env.NODE_ENV === "production" && configuredDomain !== DEFAULT_PROD_COOKIE_DOMAIN) {
+      appendCookie(response, ACCESS_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+      appendCookie(response, REFRESH_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+    }
+    return;
+  }
+
+  response.cookies.set(ACCESS_COOKIE, accessToken, getCookieBaseOptions(env.ACCESS_TOKEN_EXPIRES_IN_SEC));
+  response.cookies.set(REFRESH_COOKIE, refreshToken, getCookieBaseOptions(env.REFRESH_TOKEN_EXPIRES_IN_SEC));
+
+  if (env.NODE_ENV === "production") {
+    // Clear historical shared-domain cookies from old releases.
+    appendCookie(response, ACCESS_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+    appendCookie(response, REFRESH_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+  }
 }
 
 export function clearAuthCookies(response: NextResponse): void {
-  const cookieDomain = getCookieDomain();
+  const env = getEnv();
+  const configuredDomain = getConfiguredCookieDomain();
 
-  // Clear host-only scope.
+  if (configuredDomain) {
+    response.cookies.set(ACCESS_COOKIE, "", { ...getCookieBaseOptions(0, configuredDomain), maxAge: 0 });
+    response.cookies.set(REFRESH_COOKIE, "", { ...getCookieBaseOptions(0, configuredDomain), maxAge: 0 });
+
+    appendCookie(response, ACCESS_COOKIE, "", 0);
+    appendCookie(response, REFRESH_COOKIE, "", 0);
+
+    if (env.NODE_ENV === "production" && configuredDomain !== DEFAULT_PROD_COOKIE_DOMAIN) {
+      appendCookie(response, ACCESS_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+      appendCookie(response, REFRESH_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+    }
+    return;
+  }
+
   response.cookies.set(ACCESS_COOKIE, "", { ...getCookieBaseOptions(0), maxAge: 0 });
   response.cookies.set(REFRESH_COOKIE, "", { ...getCookieBaseOptions(0), maxAge: 0 });
 
-  // Clear shared-domain scope.
-  if (cookieDomain) {
-    response.cookies.set(ACCESS_COOKIE, "", { ...getCookieBaseOptions(0, cookieDomain), maxAge: 0 });
-    response.cookies.set(REFRESH_COOKIE, "", { ...getCookieBaseOptions(0, cookieDomain), maxAge: 0 });
+  if (env.NODE_ENV === "production") {
+    appendCookie(response, ACCESS_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
+    appendCookie(response, REFRESH_COOKIE, "", 0, DEFAULT_PROD_COOKIE_DOMAIN);
   }
 }
 
