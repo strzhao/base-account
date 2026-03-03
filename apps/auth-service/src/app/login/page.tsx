@@ -191,7 +191,7 @@ function LoginPageContent() {
         return;
       }
 
-      continueAfterLogin((authorizePath ?? "/admin") as Route);
+      continueAfterLogin((authorizePath ?? "/") as Route);
     } finally {
       setBusy(false);
     }
