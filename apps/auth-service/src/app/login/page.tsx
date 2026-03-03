@@ -2,7 +2,7 @@
 
 import type { Route } from "next";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 
 import styles from "./login.module.css";
 
@@ -64,7 +64,6 @@ function LoginPageFallback() {
 
 function LoginPageContent() {
   const searchParams = useSearchParams();
-  const checkedSessionRef = useRef(false);
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -112,30 +111,6 @@ function LoginPageContent() {
   function continueAfterLogin(path: string) {
     window.location.assign(path);
   }
-
-  useEffect(() => {
-    if (!authorizePath || checkedSessionRef.current) {
-      return;
-    }
-
-    const targetPath = authorizePath;
-    checkedSessionRef.current = true;
-
-    let cancelled = false;
-
-    async function resumeAuthorizeIfLoggedIn() {
-      const ready = await waitForSessionReady();
-      if (!cancelled && ready) {
-        continueAfterLogin(targetPath);
-      }
-    }
-
-    void resumeAuthorizeIfLoggedIn();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authorizePath]);
 
   async function onSendCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
