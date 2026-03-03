@@ -19,8 +19,8 @@ type ApiResponse = {
   message?: string;
 };
 
-const SESSION_READY_CHECK_RETRIES = 5;
-const SESSION_READY_CHECK_INTERVAL_MS = 120;
+const SESSION_READY_CHECK_RETRIES = 20;
+const SESSION_READY_CHECK_INTERVAL_MS = 250;
 
 function extractErrorMessage(payload: ApiResponse | null): string {
   switch (payload?.error) {
@@ -92,16 +92,33 @@ function LoginPageContent() {
 
   async function waitForSessionReady(): Promise<boolean> {
     for (let index = 0; index < SESSION_READY_CHECK_RETRIES; index += 1) {
-      if (index > 0) {
+      if (index >= 0) {
         await new Promise((resolve) => setTimeout(resolve, SESSION_READY_CHECK_INTERVAL_MS));
       }
 
-      const response = await fetch("/api/auth/me", {
-        cache: "no-store"
-      });
+      try {
+        const response = await fetch("/api/auth/me", {
+          cache: "no-store",
+          credentials: "include"
+        });
 
-      if (response.ok) {
-        return true;
+        if (response.ok) {
+          return true;
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          await fetch("/api/auth/refresh", {
+            method: "POST",
+            cache: "no-store",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: "{}"
+          }).catch(() => null);
+        }
+      } catch {
+        // Ignore transient network errors and continue polling.
       }
     }
 
