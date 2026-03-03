@@ -10,22 +10,9 @@ const logoutSchema = z.object({
   refreshToken: z.string().optional()
 });
 
-export async function POST(request: Request) {
+async function handleLogout(request: Request, refreshTokenFromBody?: string) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const parsed = logoutSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          error: "invalid_input",
-          message: "Invalid logout payload."
-        },
-        { status: 400 }
-      );
-    }
-
-    const refreshToken = readRefreshFromBodyOrCookie(request, parsed.data.refreshToken);
+    const refreshToken = readRefreshFromBodyOrCookie(request, refreshTokenFromBody);
     if (refreshToken) {
       await logoutSession(refreshToken);
     }
@@ -37,4 +24,25 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleRouteError(error);
   }
+}
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const parsed = logoutSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: "invalid_input",
+        message: "Invalid logout payload."
+      },
+      { status: 400 }
+    );
+  }
+
+  return handleLogout(request, parsed.data.refreshToken);
+}
+
+export async function GET(request: Request) {
+  return handleLogout(request);
 }
