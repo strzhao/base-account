@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { AuthError } from "@/server/auth/errors";
 import { buildAuthorizeCallback, buildAuthorizeQuery, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
+import { resetEnvCacheForTests } from "@/lib/env";
 
 describe("authorize helpers", () => {
+  beforeEach(() => {
+    resetEnvCacheForTests();
+  });
+
   it("parses valid authorize request", () => {
     const parsed = parseAuthorizeRequest({
       service: "base-account-client",
@@ -12,9 +17,29 @@ describe("authorize helpers", () => {
     });
 
     expect(parsed.serviceId).toBe("base-account-client");
-    expect(parsed.serviceName).toBe("Base Account Client");
+    expect(parsed.serviceName).toBe("统一账号服务");
     expect(parsed.returnTo).toContain("/app/home");
     expect(parsed.state).toBe("state-token-123456");
+  });
+
+  it("allows vercel app callback origins", () => {
+    const parsed = parseAuthorizeRequest({
+      service: "base-account-client",
+      return_to: "https://ai-news-gkqip33v3-daniel21436-9089s-projects.vercel.app/callback",
+      state: "state-token-123456"
+    });
+
+    expect(parsed.returnTo).toContain("vercel.app/callback");
+  });
+
+  it("allows localhost callback in development flow", () => {
+    const parsed = parseAuthorizeRequest({
+      service: "base-account-client",
+      return_to: "http://localhost:5173/auth/callback",
+      state: "state-token-123456"
+    });
+
+    expect(parsed.returnTo).toContain("localhost:5173");
   });
 
   it("rejects unknown service", () => {
@@ -32,6 +57,16 @@ describe("authorize helpers", () => {
       parseAuthorizeRequest({
         service: "base-account-client",
         return_to: "https://evil.example.com/callback",
+        state: "state-token-123456"
+      })
+    ).toThrowError(AuthError);
+  });
+
+  it("rejects non-localhost http callback origin", () => {
+    expect(() =>
+      parseAuthorizeRequest({
+        service: "base-account-client",
+        return_to: "http://ai-news.stringzhao.life/callback",
         state: "state-token-123456"
       })
     ).toThrowError(AuthError);
@@ -64,15 +99,14 @@ describe("authorize helpers", () => {
 
   it("creates stable authorize query string", () => {
     const query = buildAuthorizeQuery({
-      serviceId: "admin-console",
+      serviceId: "base-account-client",
       returnTo: "http://localhost:3000/admin",
       state: "state-token-123456"
     });
 
     const parsed = new URLSearchParams(query);
-    expect(parsed.get("service")).toBe("admin-console");
+    expect(parsed.get("service")).toBe("base-account-client");
     expect(parsed.get("return_to")).toBe("http://localhost:3000/admin");
     expect(parsed.get("state")).toBe("state-token-123456");
   });
 });
-

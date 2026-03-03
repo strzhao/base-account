@@ -1,4 +1,4 @@
-export const DOC_VERSION = "2026-03-03.2";
+export const DOC_VERSION = "2026-03-03.3";
 export const ISSUER = "https://user.stringzhao.life";
 export const AUDIENCE = "base-account-client";
 export const JWKS_URL = `${ISSUER}/.well-known/jwks.json`;
@@ -28,7 +28,8 @@ export type TemplateSpec = {
 export const quickStartSteps: QuickStep[] = [
   {
     title: "准备环境变量",
-    detail: "下游服务至少配置 AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL。"
+    detail:
+      "下游服务至少配置 AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL；账号中心配置 AUTH_ALLOWED_RETURN_ORIGINS、AUTH_ALLOWED_RETURN_SUFFIXES。"
   },
   {
     title: "接入统一授权入口",
@@ -50,7 +51,7 @@ export const endpointSpecs: EndpointSpec[] = [
     path: "/authorize",
     auth: "none",
     purpose: "统一授权入口。未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。",
-    requestExample: `?service=base-account-client&return_to=https%3A%2F%2Fuser.stringzhao.life%2Fapp&state=opaque-state`,
+    requestExample: `?service=base-account-client&return_to=https%3A%2F%2Fai-todo.stringzhao.life%2Fauth%2Fcallback&state=opaque-state`,
     responseExample: `302 -> /login?... 或 302 -> return_to?authorized=1&state=opaque-state`,
     errorNotes: ["400 invalid_authorize_request", "400 invalid_return_to", "400 invalid_service", "400 invalid_state"]
   },
@@ -311,7 +312,8 @@ export const rolloutChecklist: string[] = [
   "AUTH_ISSUER 与账号服务域名保持一致（当前: https://user.stringzhao.life）。",
   "AUTH_AUDIENCE 在账号服务和下游服务严格一致（当前: base-account-client）。",
   "AUTH_JWKS_URL 配置为 https://user.stringzhao.life/.well-known/jwks.json。",
-  "接入前确认 serviceId 与 return_to origin 已在账号中心白名单注册。",
+  "AUTH_ALLOWED_RETURN_ORIGINS 建议至少包含 http://localhost:3000, https://user.stringzhao.life, https://stringzhao.life。",
+  "AUTH_ALLOWED_RETURN_SUFFIXES 建议配置为 .stringzhao.life,.vercel.app（一次覆盖你全部 Vercel 服务）。",
   "外部服务统一从 /authorize 进入登录授权流程，不直接拼接 /login。",
   "业务接口对 401/403/429 做显式处理，不把鉴权失败当系统异常。",
   "上线后至少做一次 send-code / verify-code / me 全链路回归。"
@@ -332,7 +334,7 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
   },
   {
     title: "400 invalid_return_to",
-    fix: "当前 return_to 的 origin 未进入服务白名单，联系账号服务维护 serviceId -> allowedOrigins。"
+    fix: "检查 AUTH_ALLOWED_RETURN_ORIGINS / AUTH_ALLOWED_RETURN_SUFFIXES，确认 return_to 域名在放行范围内。"
   },
   {
     title: "回跳后 state mismatch",

@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+const DEFAULT_ALLOWED_RETURN_ORIGINS =
+  "http://localhost:3000,https://user.stringzhao.life,https://stringzhao.life";
+const DEFAULT_ALLOWED_RETURN_SUFFIXES = ".stringzhao.life,.vercel.app";
+
 const intFromEnv = (defaultValue: number) =>
   z.preprocess((value) => {
     if (value === undefined || value === null || value === "") {
@@ -27,17 +31,57 @@ const envSchema = z.object({
   EMAIL_CODE_MAX_ATTEMPTS: intFromEnv(5),
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().default("auth@example.com"),
-  ADMIN_EMAILS: z.string().optional().default("")
+  ADMIN_EMAILS: z.string().optional().default(""),
+  AUTH_ALLOWED_RETURN_ORIGINS: z.string().optional().default(DEFAULT_ALLOWED_RETURN_ORIGINS),
+  AUTH_ALLOWED_RETURN_SUFFIXES: z.string().optional().default(DEFAULT_ALLOWED_RETURN_SUFFIXES)
 });
 
 export type RuntimeEnv = z.infer<typeof envSchema> & {
   adminEmailSet: Set<string>;
 };
 
+const authorizeEnvSchema = z.object({
+  AUTH_ALLOWED_RETURN_ORIGINS: z.string().optional().default(DEFAULT_ALLOWED_RETURN_ORIGINS),
+  AUTH_ALLOWED_RETURN_SUFFIXES: z.string().optional().default(DEFAULT_ALLOWED_RETURN_SUFFIXES)
+});
+
+export type AuthorizeReturnPolicy = {
+  allowedReturnOrigins: Set<string>;
+  allowedReturnSuffixes: string[];
+};
+
 let cachedEnv: RuntimeEnv | null = null;
+let cachedAuthorizeReturnPolicy: AuthorizeReturnPolicy | null = null;
 
 function parseMultilinePem(value: string): string {
   return value.replace(/\\n/g, "\n").trim();
+}
+
+function splitCsv(input: string): string[] {
+  return input
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeOrigin(input: string): string {
+  try {
+    const parsed = new URL(input);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+    return parsed.origin.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeDomainSuffix(input: string): string {
+  const normalized = input.trim().toLowerCase();
+  if (!normalized) {
+    return "";
+  }
+  return normalized.startsWith(".") ? normalized.slice(1) : normalized;
 }
 
 export function getEnv(): RuntimeEnv {
@@ -69,6 +113,38 @@ export function getEnv(): RuntimeEnv {
   return cachedEnv;
 }
 
+export function getAuthorizeReturnPolicy(): AuthorizeReturnPolicy {
+  if (cachedAuthorizeReturnPolicy) {
+    return cachedAuthorizeReturnPolicy;
+  }
+
+  const parsed = authorizeEnvSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      .join("; ");
+    throw new Error(`Invalid authorize return policy env: ${issues}`);
+  }
+
+  const allowedReturnOrigins = new Set(
+    splitCsv(parsed.data.AUTH_ALLOWED_RETURN_ORIGINS)
+      .map(normalizeOrigin)
+      .filter(Boolean)
+  );
+
+  const allowedReturnSuffixes = splitCsv(parsed.data.AUTH_ALLOWED_RETURN_SUFFIXES)
+    .map(normalizeDomainSuffix)
+    .filter(Boolean);
+
+  cachedAuthorizeReturnPolicy = {
+    allowedReturnOrigins,
+    allowedReturnSuffixes
+  };
+
+  return cachedAuthorizeReturnPolicy;
+}
+
 export function resetEnvCacheForTests(): void {
   cachedEnv = null;
+  cachedAuthorizeReturnPolicy = null;
 }

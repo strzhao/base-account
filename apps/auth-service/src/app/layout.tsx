@@ -9,8 +9,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Base Account Service",
-  description: "Shared account system for Vercel products"
+  title: "统一账号服务",
+  description: "为多服务提供统一登录与授权的账号系统"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

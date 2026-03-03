@@ -34,6 +34,13 @@ Use a unified authorize URL for same-domain services:
 - Logged-in users with existing consent are redirected to `return_to` directly.
 - First-time users see a consent confirmation page and then continue.
 
+Allowlist configuration (recommended):
+
+```env
+AUTH_ALLOWED_RETURN_ORIGINS="http://localhost:3000,https://user.stringzhao.life,https://stringzhao.life"
+AUTH_ALLOWED_RETURN_SUFFIXES=".stringzhao.life,.vercel.app"
+```
+
 ## Production email requirement
 
 `RESEND_API_KEY` must be configured in production.  

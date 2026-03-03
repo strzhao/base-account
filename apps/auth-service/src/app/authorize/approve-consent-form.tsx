@@ -11,11 +11,21 @@ type ApproveConsentFormProps = {
 type ApproveResponse = {
   success?: boolean;
   redirectTo?: string;
+  error?: string;
   message?: string;
 };
 
 function resolveErrorMessage(payload: ApproveResponse | null): string {
-  return payload?.message ?? "Unable to complete authorization. Please try again.";
+  switch (payload?.error) {
+    case "missing_access_token":
+      return "登录态已失效，请重新登录。";
+    case "invalid_return_to":
+      return "回跳地址不在授权白名单内，请联系管理员。";
+    case "invalid_service":
+      return "service 参数无效，请检查接入配置。";
+    default:
+      return "授权失败，请稍后重试。";
+  }
 }
 
 export function ApproveConsentForm({ serviceId, returnTo, state }: ApproveConsentFormProps) {
@@ -47,7 +57,7 @@ export function ApproveConsentForm({ serviceId, returnTo, state }: ApproveConsen
       }
 
       if (!payload?.redirectTo) {
-        setError("Missing redirect destination from approval response.");
+        setError("未获取到回跳地址，请稍后重试。");
         return;
       }
 
@@ -61,11 +71,10 @@ export function ApproveConsentForm({ serviceId, returnTo, state }: ApproveConsen
     <form onSubmit={onSubmit}>
       <div className="inline-actions">
         <button type="submit" disabled={busy}>
-          {busy ? "Authorizing..." : "Continue and authorize"}
+          {busy ? "授权中..." : "同意并继续"}
         </button>
       </div>
       {error ? <p style={{ color: "#b91c1c", marginTop: 12 }}><small>{error}</small></p> : null}
     </form>
   );
 }
-

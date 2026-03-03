@@ -4,20 +4,38 @@ import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useMemo, useState } from "react";
 
+import styles from "./login.module.css";
+
 type SendCodeResponse = {
   success: boolean;
   requestId?: string;
   debugCode?: string;
-  message?: string;
-};
-
-type VerifyResponse = {
   error?: string;
   message?: string;
 };
 
-function extractErrorMessage(payload: VerifyResponse | null): string {
-  return payload?.message ?? "Request failed. Please try again.";
+type ApiResponse = {
+  error?: string;
+  message?: string;
+};
+
+function extractErrorMessage(payload: ApiResponse | null): string {
+  switch (payload?.error) {
+    case "invalid_input":
+      return "输入格式有误，请检查邮箱或验证码。";
+    case "invalid_code":
+      return "验证码无效或已过期，请重新获取。";
+    case "too_many_attempts":
+      return "尝试次数过多，请稍后再试。";
+    case "rate_limited":
+      return "请求过于频繁，请稍后再试。";
+    case "email_delivery_failed":
+      return "验证码发送失败，请稍后重试。";
+    case "account_disabled":
+      return "账号已被禁用，请联系管理员。";
+    default:
+      return "请求失败，请稍后重试。";
+  }
 }
 
 export default function LoginPage() {
@@ -30,10 +48,12 @@ export default function LoginPage() {
 
 function LoginPageFallback() {
   return (
-    <main className="page-shell">
-      <section className="panel" style={{ maxWidth: 520, margin: "0 auto" }}>
-        <h1>Login</h1>
-        <p>Loading login context...</p>
+    <main className={styles.root}>
+      <section className={styles.shell}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>登录</h1>
+          <p className={styles.subtitle}>正在加载登录上下文...</p>
+        </div>
       </section>
     </main>
   );
@@ -92,7 +112,7 @@ function LoginPageContent() {
       }
 
       setStep("code");
-      setMessage("Verification code sent. Please check your inbox.");
+      setMessage("验证码已发送，请查收邮箱。");
       setDebugCode(payload?.debugCode ?? null);
     } finally {
       setBusy(false);
@@ -114,14 +134,14 @@ function LoginPageContent() {
         body: JSON.stringify({ email: normalizedEmail, code: code.trim() })
       });
 
-      const payload = (await response.json().catch(() => null)) as VerifyResponse | null;
+      const payload = (await response.json().catch(() => null)) as ApiResponse | null;
 
       if (!response.ok) {
         setError(extractErrorMessage(payload));
         return;
       }
 
-      setMessage("Login successful.");
+      setMessage("登录成功，正在跳转...");
       router.push((authorizePath ?? "/admin") as Route);
     } finally {
       setBusy(false);
@@ -129,67 +149,71 @@ function LoginPageContent() {
   }
 
   return (
-    <main className="page-shell">
-      <section className="panel" style={{ maxWidth: 520, margin: "0 auto" }}>
-        <h1>Login</h1>
-        <p>
+    <main className={styles.root}>
+      <section className={styles.shell}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>登录</h1>
+          <p className={styles.subtitle}>
           {authorizePath
-            ? "Sign in to continue authorization for your external service."
-            : "Enter your email to receive a one-time verification code."}
-        </p>
+            ? "请先登录，再继续完成外部服务授权。"
+            : "请输入邮箱，我们会发送一次性验证码。"}
+          </p>
 
-        {step === "email" ? (
-          <form onSubmit={onSendCode}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              autoFocus
-            />
-            <div style={{ height: 12 }} />
-            <button type="submit" disabled={busy || !email.trim()}>
-              {busy ? "Sending..." : "Send verification code"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={onVerifyCode}>
-            <label htmlFor="code">Verification code</label>
-            <input
-              id="code"
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoFocus
-              required
-            />
-            <div style={{ height: 12 }} />
-            <div className="inline-actions">
-              <button type="submit" disabled={busy || !code.trim()}>
-                {busy ? "Verifying..." : "Verify and login"}
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  setStep("email");
-                  setCode("");
-                  setError(null);
-                  setMessage(null);
-                }}
-              >
-                Back
-              </button>
-            </div>
-          </form>
-        )}
+          {step === "email" ? (
+            <form onSubmit={onSendCode} className={styles.form}>
+              <label htmlFor="email" className={styles.label}>邮箱</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                autoFocus
+                className={styles.input}
+              />
+              <div className={styles.actions}>
+                <button type="submit" disabled={busy || !email.trim()} className={styles.primaryButton}>
+                  {busy ? "发送中..." : "发送验证码"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={onVerifyCode} className={styles.form}>
+              <label htmlFor="code" className={styles.label}>验证码</label>
+              <input
+                id="code"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoFocus
+                required
+                className={styles.input}
+              />
+              <div className={styles.actions}>
+                <button type="submit" disabled={busy || !code.trim()} className={styles.primaryButton}>
+                  {busy ? "验证中..." : "验证并登录"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => {
+                    setStep("email");
+                    setCode("");
+                    setError(null);
+                    setMessage(null);
+                  }}
+                >
+                  返回
+                </button>
+              </div>
+            </form>
+          )}
 
-        {message ? <p><small>{message}</small></p> : null}
-        {error ? <p style={{ color: "#b91c1c" }}><small>{error}</small></p> : null}
-        {debugCode ? <p><small>Debug code: <strong>{debugCode}</strong></small></p> : null}
+          {message ? <p className={styles.info}><small>{message}</small></p> : null}
+          {error ? <p className={styles.error}><small>{error}</small></p> : null}
+          {debugCode ? <p className={styles.debug}><small>调试验证码：<strong>{debugCode}</strong></small></p> : null}
+        </div>
       </section>
     </main>
   );
