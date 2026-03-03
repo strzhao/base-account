@@ -167,7 +167,13 @@ function LoginPageContent() {
 
       setMessage("登录成功，正在跳转...");
 
-      await waitForSessionReady();
+      const sessionReady = await waitForSessionReady();
+      if (!sessionReady) {
+        setMessage(null);
+        setError("登录状态同步超时，请稍后重试。");
+        return;
+      }
+
       continueAfterLogin((authorizePath ?? "/admin") as Route);
     } finally {
       setBusy(false);

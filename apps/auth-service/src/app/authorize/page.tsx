@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ApproveConsentForm } from "@/app/authorize/approve-consent-form";
@@ -8,13 +8,30 @@ import styles from "@/app/authorize/authorize.module.css";
 import { buildAuthorizeCallback, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
 import { AuthError } from "@/server/auth/errors";
 import { getCurrentUserFromAccessToken, hasServiceConsent } from "@/server/auth/service";
-import { readAccessFromCookieStore } from "@/server/auth/token-cookie";
+import { readAccessFromCookieHeader } from "@/server/auth/token-cookie";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 type AuthorizePageProps = {
   searchParams: Promise<SearchParams>;
 };
+
+const AUTH_TOKEN_ERROR_NAMES = new Set([
+  "JOSEError",
+  "JWTExpired",
+  "JWTInvalid",
+  "JWTClaimValidationFailed",
+  "JWSInvalid",
+  "JWSSignatureVerificationFailed"
+]);
+
+function isAuthFailure(error: unknown): boolean {
+  if (error instanceof AuthError) {
+    return true;
+  }
+
+  return error instanceof Error && AUTH_TOKEN_ERROR_NAMES.has(error.name);
+}
 
 export default async function AuthorizePage({ searchParams }: AuthorizePageProps) {
   const params = await searchParams;
@@ -44,25 +61,67 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
     );
   }
 
-  const cookieStore = await cookies();
-  const accessToken = readAccessFromCookieStore(cookieStore);
+  const requestHeaders = await headers();
+  const accessToken = readAccessFromCookieHeader(requestHeaders.get("cookie") ?? "");
 
   if (!accessToken) {
     redirect(buildLoginRedirectPath(authorizeRequest) as Route);
   }
 
+  let currentUser;
   try {
-    const user = await getCurrentUserFromAccessToken(accessToken);
+    currentUser = await getCurrentUserFromAccessToken(accessToken);
+  } catch (error) {
+    if (isAuthFailure(error)) {
+      redirect(buildLoginRedirectPath(authorizeRequest) as Route);
+    }
+
+    console.error("[authorize] Failed to load current user", error);
+    return (
+      <main className={styles.root}>
+        <section className={styles.shell}>
+          <div className={styles.panel}>
+            <p className={styles.kicker}>统一授权</p>
+            <h1 className={styles.title}>暂时无法完成授权</h1>
+            <p className={styles.summary}>登录态校验失败，请稍后再试。</p>
+            <p className={styles.note}>
+              你可以返回{" "}
+              <Link href={buildLoginRedirectPath(authorizeRequest) as Route}>登录页</Link>{" "}
+              重新发起授权。
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  try {
     const consentGranted = await hasServiceConsent({
-      userId: user.id,
+      userId: currentUser.id,
       serviceId: authorizeRequest.serviceId
     });
 
     if (consentGranted) {
       redirect(buildAuthorizeCallback(authorizeRequest.returnTo, authorizeRequest.state) as Route);
     }
-  } catch {
-    redirect(buildLoginRedirectPath(authorizeRequest) as Route);
+  } catch (error) {
+    console.error("[authorize] Failed to query consent", error);
+    return (
+      <main className={styles.root}>
+        <section className={styles.shell}>
+          <div className={styles.panel}>
+            <p className={styles.kicker}>统一授权</p>
+            <h1 className={styles.title}>授权服务暂时不可用</h1>
+            <p className={styles.summary}>无法读取授权状态，请稍后再试。</p>
+            <p className={styles.note}>
+              登录态已保留。你可以稍后刷新本页，或返回{" "}
+              <Link href={buildLoginRedirectPath(authorizeRequest) as Route}>登录页</Link>{" "}
+              重试。
+            </p>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
