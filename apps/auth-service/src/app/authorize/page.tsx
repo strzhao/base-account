@@ -95,15 +95,12 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
     );
   }
 
+  let consentGranted = false;
   try {
-    const consentGranted = await hasServiceConsent({
+    consentGranted = await hasServiceConsent({
       userId: currentUser.id,
       serviceId: authorizeRequest.serviceId
     });
-
-    if (consentGranted) {
-      redirect(buildAuthorizeCallback(authorizeRequest.returnTo, authorizeRequest.state) as Route);
-    }
   } catch (error) {
     console.error("[authorize] Failed to query consent", error);
     return (
@@ -122,6 +119,10 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
         </section>
       </main>
     );
+  }
+
+  if (consentGranted) {
+    redirect(buildAuthorizeCallback(authorizeRequest.returnTo, authorizeRequest.state) as Route);
   }
 
   return (
