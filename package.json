@@ -11,6 +11,7 @@
     "build": "npm run build --workspace @base-account/auth-service && npm run build --workspace @stringzhao/auth-sdk",
     "lint": "npm run lint --workspace @base-account/auth-service",
     "test": "npm run test --workspace @base-account/auth-service && npm run test --workspace @stringzhao/auth-sdk",
+    "verify:auth-flow": "node apps/auth-service/scripts/verify-auth-flow.mjs",
     "keys:generate": "npm run keys:generate --workspace @base-account/auth-service",
     "publish:auth-sdk": "npm publish --workspace @stringzhao/auth-sdk --access public --registry=https://registry.npmjs.org"
   },

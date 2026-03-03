@@ -54,6 +54,22 @@ npx prisma db push
 npm run dev
 ```
 
+## 持续验收（最小 Demo）
+
+```bash
+npm run verify:auth-flow
+```
+
+该命令会对生产域名授权链路做最小冒烟验收（`/authorize` 跳转参数、`/api/auth/me` 未登录行为、非法 `return_to` 拦截）。
+
+## 持续验收（GitHub Actions）
+
+仓库已包含工作流：`.github/workflows/auth-flow-verify.yml`
+
+- 手动触发：`Actions -> Auth Flow Verify -> Run workflow`
+- 定时巡检：每 6 小时自动执行一次
+- 默认目标：`https://user.stringzhao.life`
+
 ## 稳定核心接口
 
 - `POST /api/auth/send-code`

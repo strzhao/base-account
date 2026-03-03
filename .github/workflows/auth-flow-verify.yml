@@ -1,0 +1,75 @@
+name: Auth Flow Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "认证服务地址"
+        required: false
+        default: "https://user.stringzhao.life"
+      service_id:
+        description: "service 参数"
+        required: false
+        default: "base-account-client"
+      return_to:
+        description: "白名单回跳地址"
+        required: false
+        default: "https://ai-todo.stringzhao.life/auth/callback"
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auth-flow-verify-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Run auth flow smoke verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve inputs
+        id: inputs
+        shell: bash
+        run: |
+          BASE_URL="${{ github.event.inputs.base_url }}"
+          SERVICE_ID="${{ github.event.inputs.service_id }}"
+          RETURN_TO="${{ github.event.inputs.return_to }}"
+
+          if [ -z "$BASE_URL" ]; then
+            BASE_URL="https://user.stringzhao.life"
+          fi
+          if [ -z "$SERVICE_ID" ]; then
+            SERVICE_ID="base-account-client"
+          fi
+          if [ -z "$RETURN_TO" ]; then
+            RETURN_TO="https://ai-todo.stringzhao.life/auth/callback"
+          fi
+
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "service_id=$SERVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "return_to=$RETURN_TO" >> "$GITHUB_OUTPUT"
+
+      - name: Verify authorize flow (strict)
+        run: |
+          npm run verify:auth-flow -- \
+            --base-url "${{ steps.inputs.outputs.base_url }}" \
+            --service "${{ steps.inputs.outputs.service_id }}" \
+            --return-to "${{ steps.inputs.outputs.return_to }}" \
+            --strict

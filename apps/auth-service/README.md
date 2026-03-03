@@ -10,6 +10,7 @@ Copy `.env.example` to `.env.local` and fill all required values.
 - `npm run build`
 - `npm run lint`
 - `npm run test`
+- `npm run verify:auth-flow` (run from repo root)
 - `npm run keys:generate`
 
 ## Admin Access
@@ -40,6 +41,34 @@ Allowlist configuration (recommended):
 AUTH_ALLOWED_RETURN_ORIGINS="http://localhost:3000,https://user.stringzhao.life,https://stringzhao.life"
 AUTH_ALLOWED_RETURN_SUFFIXES=".stringzhao.life,.vercel.app"
 ```
+
+## Continuous acceptance demo
+
+Use the minimal smoke verifier to validate the new authorize flow continuously:
+
+```bash
+npm run verify:auth-flow
+```
+
+Optional arguments:
+
+```bash
+npm run verify:auth-flow -- \
+  --base-url https://user.stringzhao.life \
+  --service base-account-client \
+  --return-to https://ai-todo.stringzhao.life/auth/callback \
+  --strict
+```
+
+The script validates:
+- `/authorize` redirect integrity (`service`, `return_to`, `state`)
+- `.vercel.app` callback allowlist
+- unauthenticated `/api/auth/me` behavior
+- invalid `return_to` rejection
+
+GitHub Actions workflow (`.github/workflows/auth-flow-verify.yml`) runs this check:
+- manually via workflow_dispatch
+- automatically every 6 hours
 
 ## Production email requirement
 
