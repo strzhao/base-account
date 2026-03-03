@@ -1,4 +1,4 @@
-import { authCookieNames } from "@/server/auth/cookies";
+import { readAccessFromCookieHeader, readRefreshFromCookieHeader } from "@/server/auth/token-cookie";
 
 export function readBearerOrAccessCookie(request: Request): string | undefined {
   const authorization = request.headers.get("authorization");
@@ -9,13 +9,7 @@ export function readBearerOrAccessCookie(request: Request): string | undefined {
     }
   }
 
-  const cookie = request.headers.get("cookie") ?? "";
-  const accessCookie = cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${authCookieNames.access}=`));
-
-  return accessCookie?.slice(accessCookie.indexOf("=") + 1);
+  return readAccessFromCookieHeader(request.headers.get("cookie") ?? "");
 }
 
 export function readRefreshFromBodyOrCookie(request: Request, bodyRefresh?: string): string | undefined {
@@ -23,11 +17,5 @@ export function readRefreshFromBodyOrCookie(request: Request, bodyRefresh?: stri
     return bodyRefresh;
   }
 
-  const cookie = request.headers.get("cookie") ?? "";
-  const refreshCookie = cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${authCookieNames.refresh}=`));
-
-  return refreshCookie?.slice(refreshCookie.indexOf("=") + 1);
+  return readRefreshFromCookieHeader(request.headers.get("cookie") ?? "");
 }

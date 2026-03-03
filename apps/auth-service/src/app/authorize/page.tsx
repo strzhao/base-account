@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 import { ApproveConsentForm } from "@/app/authorize/approve-consent-form";
 import styles from "@/app/authorize/authorize.module.css";
 import { buildAuthorizeCallback, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
-import { authCookieNames } from "@/server/auth/cookies";
 import { AuthError } from "@/server/auth/errors";
 import { getCurrentUserFromAccessToken, hasServiceConsent } from "@/server/auth/service";
+import { readAccessFromCookieStore } from "@/server/auth/token-cookie";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -45,7 +45,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
   }
 
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get(authCookieNames.access)?.value;
+  const accessToken = readAccessFromCookieStore(cookieStore);
 
   if (!accessToken) {
     redirect(buildLoginRedirectPath(authorizeRequest) as Route);
