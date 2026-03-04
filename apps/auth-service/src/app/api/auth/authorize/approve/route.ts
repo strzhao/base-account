@@ -7,7 +7,7 @@ import { readBearerOrAccessCookie } from "@/server/auth/request";
 import { getCurrentUserFromAccessToken, grantServiceConsent } from "@/server/auth/service";
 
 const approveSchema = z.object({
-  service: z.string().trim().min(1),
+  service: z.string().trim().min(1).optional(),
   return_to: z.string().trim().min(1),
   state: z.string().trim().min(1)
 });
@@ -26,7 +26,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const authorizeRequest = parseAuthorizeRequest(parsed.data);
+    const authorizeRequest = await parseAuthorizeRequest({
+      service: parsed.data.service,
+      return_to: parsed.data.return_to,
+      state: parsed.data.state
+    });
     const accessToken = readBearerOrAccessCookie(request);
 
     if (!accessToken) {
@@ -53,4 +57,3 @@ export async function POST(request: Request) {
     return handleRouteError(error);
   }
 }
-

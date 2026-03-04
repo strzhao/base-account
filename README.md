@@ -86,6 +86,7 @@ npm run verify:auth-flow
    - `AUTH_ISSUER=https://user.stringzhao.life`
    - `AUTH_AUDIENCE=base-account-client`
    - `AUTH_JWKS_URL=https://user.stringzhao.life/.well-known/jwks.json`
+   - 在账号服务 `/admin` -> `Services` 先登记并启用业务回跳域名（`return_to` origin）
 3. 在业务网关或中间件统一校验 Bearer token
 
 详细可复制代码见 `/docs` 页面。

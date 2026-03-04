@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ApproveConsentForm } from "@/app/authorize/approve-consent-form";
+import { ServiceIcon } from "@/app/authorize/service-icon";
 import styles from "@/app/authorize/authorize.module.css";
 import { buildAuthorizeCallback, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
 import { AuthError } from "@/server/auth/errors";
@@ -59,7 +60,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 
   let authorizeRequest;
   try {
-    authorizeRequest = parseAuthorizeRequest({
+    authorizeRequest = await parseAuthorizeRequest({
       service: params.service,
       return_to: params.return_to,
       state: params.state
@@ -74,7 +75,8 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
             <h1 className={styles.title}>请求已拦截</h1>
             <p className={styles.summary}>{message}</p>
             <p className={styles.note}>
-              请检查 `service`、`return_to`、`state` 参数，或返回 <Link href="/login">登录页</Link>。
+              请检查 `return_to`、`state` 参数，并确认回跳域名已在后台 Services 启用，或返回{" "}
+              <Link href="/login">登录页</Link>。
             </p>
           </div>
         </section>
@@ -151,7 +153,10 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
       <section className={styles.shell}>
         <div className={styles.panel}>
           <p className={styles.kicker}>统一授权</p>
-          <h1 className={styles.title}>授权 {authorizeRequest.serviceName}</h1>
+          <div className={styles.serviceHeader}>
+            <ServiceIcon serviceName={authorizeRequest.serviceName} iconUrl={authorizeRequest.serviceIconUrl} />
+            <h1 className={styles.title}>授权 {authorizeRequest.serviceName}</h1>
+          </div>
           <p className={styles.summary}>{authorizeRequest.consentSummary}</p>
 
           <div className={styles.meta}>

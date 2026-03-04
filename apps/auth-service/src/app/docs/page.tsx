@@ -13,7 +13,8 @@ import {
   quickStartSteps,
   rolloutChecklist,
   templateSpecs,
-  troubleshooting
+  troubleshooting,
+  externalIntegrationChecklist
 } from "@/app/docs/content";
 import { CopyForAiButton } from "@/app/docs/copy-for-ai-button";
 
@@ -81,6 +82,7 @@ export default function DocsPage() {
             <a href="#quick-start">Quick Start</a>
             <a href="#api-contract">API Contract</a>
             <a href="#templates">Templates</a>
+            <a href="#external-checklist">External Checklist</a>
             <a href="#machine-spec">Machine Spec</a>
             <Link href="/login">Login</Link>
           </nav>
@@ -151,6 +153,15 @@ export default function DocsPage() {
           <h2>Deployment Checklist</h2>
           <ul className={styles.cleanList}>
             {rolloutChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+
+        <section id="external-checklist" className={styles.section}>
+          <h2>External Integration Checklist</h2>
+          <ul className={styles.cleanList}>
+            {externalIntegrationChecklist.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>

@@ -31,12 +31,44 @@
 }
 
 .title {
-  margin: 10px 0 12px;
+  margin: 0;
   color: #2d312d;
   font-family: "Noto Serif SC", "STSong", "Songti SC", serif;
   font-size: clamp(1.55rem, 3.8vw, 2.15rem);
   font-weight: 600;
   line-height: 1.35;
+}
+
+.serviceHeader {
+  margin: 10px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.serviceIcon,
+.serviceIconFallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.serviceIcon {
+  object-fit: cover;
+  border: 1px solid #d7d3c8;
+  background: #fff;
+}
+
+.serviceIconFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #5e7d72 0%, #6f5f4d 100%);
+  color: #f9f6ef;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .summary {
@@ -125,5 +157,12 @@
 
   .panel {
     padding: 20px;
+  }
+
+  .serviceIcon,
+  .serviceIconFallback {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
 }

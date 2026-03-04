@@ -1,4 +1,4 @@
-export const DOC_VERSION = "2026-03-03.3";
+export const DOC_VERSION = "2026-03-04.2";
 export const ISSUER = "https://user.stringzhao.life";
 export const AUDIENCE = "base-account-client";
 export const JWKS_URL = `${ISSUER}/.well-known/jwks.json`;
@@ -33,7 +33,11 @@ export const quickStartSteps: QuickStep[] = [
   },
   {
     title: "接入统一授权入口",
-    detail: "外部服务统一跳转 /authorize?service&return_to&state，禁止直接跳 /login。"
+    detail: "外部服务统一跳转 /authorize?return_to&state（service 可传但会被忽略），禁止直接跳 /login。"
+  },
+  {
+    title: "后台登记服务域名",
+    detail: "在 Admin Console 的 Services 区域先登记/启用 origin，再让外部服务发起授权。"
   },
   {
     title: "处理回跳并拉取用户态",
@@ -50,8 +54,8 @@ export const endpointSpecs: EndpointSpec[] = [
     method: "GET",
     path: "/authorize",
     auth: "none",
-    purpose: "统一授权入口。未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。",
-    requestExample: `?service=base-account-client&return_to=https%3A%2F%2Fai-todo.stringzhao.life%2Fauth%2Fcallback&state=opaque-state`,
+    purpose: "统一授权入口。后端基于 return_to 的 origin 识别服务，未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。",
+    requestExample: `?return_to=https%3A%2F%2Fai-todo.stringzhao.life%2Fauth%2Fcallback&state=opaque-state`,
     responseExample: `302 -> /login?... 或 302 -> return_to?authorized=1&state=opaque-state`,
     errorNotes: ["400 invalid_authorize_request", "400 invalid_return_to", "400 invalid_service", "400 invalid_state"]
   },
@@ -95,7 +99,6 @@ export const endpointSpecs: EndpointSpec[] = [
     auth: "access_token",
     purpose: "用户在首次授权页点击同意后写入 consent 记录并返回回跳地址。",
     requestExample: `{
-  "service": "base-account-client",
   "return_to": "https://user.stringzhao.life/app",
   "state": "opaque-state"
 }`,
@@ -276,8 +279,7 @@ const returnTo = encodeURIComponent("https://user.stringzhao.life/app");
 
 window.location.href =
   "https://user.stringzhao.life/authorize" +
-  "?service=base-account-client" +
-  "&return_to=" + returnTo +
+  "?return_to=" + returnTo +
   "&state=" + encodeURIComponent(state);`
   },
   {
@@ -312,11 +314,25 @@ export const rolloutChecklist: string[] = [
   "AUTH_ISSUER 与账号服务域名保持一致（当前: https://user.stringzhao.life）。",
   "AUTH_AUDIENCE 在账号服务和下游服务严格一致（当前: base-account-client）。",
   "AUTH_JWKS_URL 配置为 https://user.stringzhao.life/.well-known/jwks.json。",
+  "新接入服务需要先在 Admin Console -> Services 登记并启用 origin。",
+  "/authorize 的 service 参数已弃用（兼容保留，但后端不再依赖该参数判定服务）。",
   "AUTH_ALLOWED_RETURN_ORIGINS 建议至少包含 http://localhost:3000, https://user.stringzhao.life, https://stringzhao.life。",
   "AUTH_ALLOWED_RETURN_SUFFIXES 建议配置为 .stringzhao.life,.vercel.app（一次覆盖你全部 Vercel 服务）。",
   "外部服务统一从 /authorize 进入登录授权流程，不直接拼接 /login。",
   "业务接口对 401/403/429 做显式处理，不把鉴权失败当系统异常。",
   "上线后至少做一次 send-code / verify-code / me 全链路回归。"
+];
+
+export const externalIntegrationChecklist: string[] = [
+  "授权入口统一改为 /authorize?return_to=<absolute_url>&state=<opaque_state>。",
+  "service 参数可传可不传（兼容保留），但不能再用于服务身份判定。",
+  "发起授权前生成并持久化 state（建议 randomUUID + sessionStorage）。",
+  "回跳后必须校验 authorized=1 且 returned state 与本地 state 完全一致。",
+  "每个业务回跳域名（return_to origin）需先在 /admin -> Services 开通并启用。",
+  "前端登录态读取继续使用 /api/auth/me，并携带 credentials: include。",
+  "后端 JWT 验签配置保持一致：AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL。",
+  "业务侧显式处理 400 invalid_service / 400 invalid_return_to / 401 invalid_access_token。",
+  "上线前至少完成首次授权、重复授权直跳、停用服务拦截、icon 展示回退四项回归。"
 ];
 
 export const troubleshooting: Array<{ title: string; fix: string }> = [
@@ -337,6 +353,10 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
     fix: "检查 AUTH_ALLOWED_RETURN_ORIGINS / AUTH_ALLOWED_RETURN_SUFFIXES，确认 return_to 域名在放行范围内。"
   },
   {
+    title: "400 invalid_service",
+    fix: "当前 return_to origin 尚未在后台 Services 开通，先登记并启用该域名。"
+  },
+  {
     title: "回跳后 state mismatch",
     fix: "确认发起授权前本地持久化 state，并在回跳时严格比对 returned state。"
   }
@@ -344,14 +364,15 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
 
 export const machineReadableSpec = {
   docVersion: DOC_VERSION,
-  generatedAt: "2026-03-03",
+  generatedAt: "2026-03-04",
   service: "base-account-auth",
   issuer: ISSUER,
   audience: AUDIENCE,
   jwksUrl: JWKS_URL,
   authorizeContract: {
     entryPath: "/authorize",
-    requiredQuery: ["service", "return_to", "state"],
+    requiredQuery: ["return_to", "state"],
+    optionalQuery: ["service (deprecated)"],
     callbackQuery: ["authorized", "state"]
   },
   endpoints: endpointSpecs.map((item) => ({
@@ -367,7 +388,8 @@ export const machineReadableSpec = {
     title: item.title,
     runtime: item.runtime
   })),
-  checklist: rolloutChecklist
+  checklist: rolloutChecklist,
+  externalIntegrationChecklist
 };
 
 export function buildAiFeedText(): string {
@@ -408,6 +430,12 @@ export function buildAiFeedText(): string {
 
   lines.push("## Deployment Checklist");
   rolloutChecklist.forEach((item, index) => {
+    lines.push(`${index + 1}. ${item}`);
+  });
+  lines.push("");
+
+  lines.push("## External Integration Checklist");
+  externalIntegrationChecklist.forEach((item, index) => {
     lines.push(`${index + 1}. ${item}`);
   });
   lines.push("");

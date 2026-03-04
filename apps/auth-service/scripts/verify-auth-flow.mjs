@@ -3,8 +3,7 @@
 import { randomUUID } from "node:crypto";
 
 const DEFAULT_BASE_URL = "https://user.stringzhao.life";
-const DEFAULT_SERVICE = "base-account-client";
-const DEFAULT_RETURN_TO = "https://ai-todo.stringzhao.life/auth/callback";
+const DEFAULT_RETURN_TO = "https://user.stringzhao.life/app";
 const DEFAULT_VERCEL_RETURN_TO = "https://smoke-demo.vercel.app/callback";
 const DEFAULT_INVALID_RETURN_TO = "https://evil.example.com/callback";
 
@@ -17,7 +16,7 @@ function printHelp() {
 
 选项:
   --base-url <url>     账号服务地址（默认: ${DEFAULT_BASE_URL}）
-  --service <id>       service 参数（默认: ${DEFAULT_SERVICE}）
+  --service <id>       兼容参数（已弃用，可不传）
   --return-to <url>    白名单回跳地址（默认: ${DEFAULT_RETURN_TO}）
   --state <value>      state 参数（默认随机 UUID）
   --strict             严格模式（告警也会导致退出码为 1）
@@ -32,7 +31,7 @@ function printHelp() {
 function parseArgs(argv) {
   const options = {
     baseUrl: DEFAULT_BASE_URL,
-    service: DEFAULT_SERVICE,
+    service: "",
     returnTo: DEFAULT_RETURN_TO,
     state: randomUUID(),
     strict: false
@@ -90,7 +89,9 @@ function normalizeAbsoluteUrl(raw, fieldName) {
 
 function buildAuthorizeUrl(baseUrl, service, returnTo, state) {
   const url = new URL("/authorize", baseUrl);
-  url.searchParams.set("service", service);
+  if (service) {
+    url.searchParams.set("service", service);
+  }
   url.searchParams.set("return_to", returnTo);
   url.searchParams.set("state", state);
   return url;
@@ -142,10 +143,9 @@ async function checkAuthorizeRedirect({
 
   const loginUrl = new URL(location, baseUrl);
   assert(loginUrl.pathname === "/login", `预期跳转 /login，实际 ${loginUrl.pathname}`);
-  assert(
-    loginUrl.searchParams.get("service") === service,
-    "跳转参数 service 不一致"
-  );
+
+  const resolvedService = loginUrl.searchParams.get("service");
+  assert(resolvedService, "跳转参数缺少 service（应由后端按域名解析后回填）");
 
   const returnedState = loginUrl.searchParams.get("state");
   assert(returnedState === state, "跳转参数 state 不一致");
@@ -158,6 +158,39 @@ async function checkAuthorizeRedirect({
   assert(returnedReturnTo === expectedReturnTo, "跳转参数 return_to 不一致");
 
   return `status=${response.status}, location=${loginUrl.pathname}`;
+}
+
+async function checkVercelAllowlist({
+  baseUrl,
+  service,
+  state
+}) {
+  const authorizeUrl = buildAuthorizeUrl(baseUrl, service, DEFAULT_VERCEL_RETURN_TO, state);
+  const response = await fetchWithTimeout(authorizeUrl, { redirect: "manual" });
+
+  if (isRedirectStatus(response.status)) {
+    return `status=${response.status}, vercel callback accepted`;
+  }
+
+  const body = await response.text();
+  const blockedByReturnTo = body.includes("invalid_return_to") || body.includes("return_to origin");
+  if (blockedByReturnTo) {
+    throw new Error("vercel.app 回跳地址被当作非法 return_to 拒绝");
+  }
+
+  const blockedByService =
+    body.includes("invalid_service") ||
+    body.includes("未开通授权服务") ||
+    body.includes("请求已拦截");
+  if (blockedByService) {
+    return {
+      warning: "vercel.app 域名已通过白名单校验，但未在后台 Services 开通"
+    };
+  }
+
+  return {
+    warning: `vercel.app 校验返回 ${response.status}，请人工确认`
+  };
 }
 
 async function checkMeUnauthorized(baseUrl) {
@@ -241,7 +274,7 @@ async function run() {
 
   console.log("=== Base Account 授权链路验收 ===");
   console.log(`baseUrl:  ${options.baseUrl}`);
-  console.log(`service:  ${options.service}`);
+  console.log(`service:  ${options.service || "(not set, deprecated)"}`);
   console.log(`returnTo: ${options.returnTo}`);
   console.log(`state:    ${options.state}`);
   console.log("");
@@ -255,11 +288,10 @@ async function run() {
     })
   );
 
-  await runCheck("vercel.app 域名 /authorize 跳转校验", () =>
-    checkAuthorizeRedirect({
+  await runCheck("vercel.app 白名单校验", () =>
+    checkVercelAllowlist({
       baseUrl: options.baseUrl,
       service: options.service,
-      returnTo: DEFAULT_VERCEL_RETURN_TO,
       state: `${options.state}-vercel`
     })
   );
@@ -304,4 +336,3 @@ run().catch((error) => {
   console.error("脚本执行异常:", error);
   process.exitCode = 1;
 });
-

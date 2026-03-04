@@ -22,7 +22,7 @@ function resolveErrorMessage(payload: ApproveResponse | null): string {
     case "invalid_return_to":
       return "回跳地址不在授权白名单内，请联系管理员。";
     case "invalid_service":
-      return "service 参数无效，请检查接入配置。";
+      return "当前回跳域名尚未开通，请联系管理员在后台 Services 配置。";
     default:
       return "授权失败，请稍后重试。";
   }

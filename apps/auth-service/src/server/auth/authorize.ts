@@ -1,5 +1,6 @@
 import { AuthError } from "@/server/auth/errors";
 import { getAuthorizeReturnPolicy } from "@/lib/env";
+import { resolveAuthorizeServiceByReturnTo } from "@/server/auth/service-registry";
 
 export type AuthorizeQueryInput = {
   service: string | string[] | undefined;
@@ -7,36 +8,13 @@ export type AuthorizeQueryInput = {
   state: string | string[] | undefined;
 };
 
-export type AuthorizeService = {
-  id: string;
-  displayName: string;
-  consentSummary: string;
-};
-
 export type AuthorizeRequest = {
   serviceId: string;
   serviceName: string;
+  serviceIconUrl: string | null;
   consentSummary: string;
   returnTo: string;
   state: string;
-};
-
-const SERVICE_REGISTRY: Record<string, AuthorizeService> = {
-  "base-account-client": {
-    id: "base-account-client",
-    displayName: "统一账号服务",
-    consentSummary: "该服务将使用你的统一账号登录状态并读取基础资料。"
-  },
-  "admin-console": {
-    id: "admin-console",
-    displayName: "管理控制台",
-    consentSummary: "该服务将使用你的统一账号登录状态并读取基础资料。"
-  },
-  "integration-docs": {
-    id: "integration-docs",
-    displayName: "接入文档中心",
-    consentSummary: "该服务将使用你的统一账号登录状态并读取基础资料。"
-  }
 };
 
 function getSingleValue(raw: string | string[] | undefined): string | undefined {
@@ -71,7 +49,7 @@ function matchesDomainSuffix(hostname: string, suffixes: string[]): boolean {
   return suffixes.some((suffix) => normalizedHostname === suffix || normalizedHostname.endsWith(`.${suffix}`));
 }
 
-function validateReturnTo(returnTo: string, serviceId: string): string {
+function validateReturnTo(returnTo: string): string {
   let parsed: URL;
   try {
     parsed = new URL(returnTo);
@@ -98,7 +76,6 @@ function validateReturnTo(returnTo: string, serviceId: string): string {
 
   if (!exactMatchAllowed && !isLoopbackAllowed && !httpsSuffixAllowed) {
     throw new AuthError("invalid_return_to", "return_to origin 不在授权白名单内。", 400, {
-      service: serviceId,
       origin,
       allowedReturnOrigins: Array.from(policy.allowedReturnOrigins),
       allowedReturnSuffixes: policy.allowedReturnSuffixes.map((suffix) => `*.${suffix}`)
@@ -120,24 +97,21 @@ function validateState(rawState: string): string {
   return rawState;
 }
 
-export function parseAuthorizeRequest(input: AuthorizeQueryInput): AuthorizeRequest {
-  const serviceId = requireQueryValue("service", input.service);
+export async function parseAuthorizeRequest(input: AuthorizeQueryInput): Promise<AuthorizeRequest> {
   const returnToRaw = requireQueryValue("return_to", input.return_to);
   const stateRaw = requireQueryValue("state", input.state);
 
-  const service = SERVICE_REGISTRY[serviceId];
-  if (!service) {
-    throw new AuthError("invalid_service", "未知的 service 参数。", 400, {
-      service: serviceId,
-      availableServices: Object.keys(SERVICE_REGISTRY)
-    });
-  }
+  // `service` query is kept for backward compatibility but ignored by server-side service resolution.
+  getSingleValue(input.service);
+  const normalizedReturnTo = validateReturnTo(returnToRaw);
+  const service = await resolveAuthorizeServiceByReturnTo(normalizedReturnTo);
 
   return {
-    serviceId: service.id,
-    serviceName: service.displayName,
+    serviceId: service.serviceId,
+    serviceName: service.serviceName,
+    serviceIconUrl: service.serviceIconUrl,
     consentSummary: service.consentSummary,
-    returnTo: validateReturnTo(returnToRaw, service.id),
+    returnTo: normalizedReturnTo,
     state: validateState(stateRaw)
   };
 }

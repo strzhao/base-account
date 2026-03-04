@@ -28,9 +28,11 @@ Only these users can access `/admin` and `/api/admin/*`.
 Use a unified authorize URL for same-domain services:
 
 ```text
-/authorize?service=<service_id>&return_to=<absolute_url>&state=<opaque_state>
+/authorize?return_to=<absolute_url>&state=<opaque_state>
 ```
 
+- `service` query is backward-compatible but ignored by server-side service identity resolution.
+- Admin must register and enable the `return_to` origin in `/admin` -> Services first.
 - Unauthenticated users are redirected to `/login` automatically.
 - Logged-in users with existing consent are redirected to `return_to` directly.
 - First-time users see a consent confirmation page and then continue.
@@ -55,13 +57,12 @@ Optional arguments:
 ```bash
 npm run verify:auth-flow -- \
   --base-url https://user.stringzhao.life \
-  --service base-account-client \
-  --return-to https://ai-todo.stringzhao.life/auth/callback \
+  --return-to https://user.stringzhao.life/app \
   --strict
 ```
 
 The script validates:
-- `/authorize` redirect integrity (`service`, `return_to`, `state`)
+- `/authorize` redirect integrity (`return_to`, `state`)
 - `.vercel.app` callback allowlist
 - unauthenticated `/api/auth/me` behavior
 - invalid `return_to` rejection

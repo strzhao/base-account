@@ -1,12 +1,17 @@
 import { listEmailCodeLogsForAdmin, listUsersForAdmin } from "@/server/auth/service";
 import { requireAdminFromCookies } from "@/server/auth/admin-session";
+import { listAuthServicesForAdmin } from "@/server/auth/service-registry";
 
 import { AdminDashboard } from "./admin-dashboard";
 
 export default async function AdminPage() {
   const admin = await requireAdminFromCookies();
 
-  const [users, logs] = await Promise.all([listUsersForAdmin(), listEmailCodeLogsForAdmin(25)]);
+  const [users, logs, services] = await Promise.all([
+    listUsersForAdmin(),
+    listEmailCodeLogsForAdmin(25),
+    listAuthServicesForAdmin()
+  ]);
 
   return (
     <main className="page-shell">
@@ -17,7 +22,7 @@ export default async function AdminPage() {
         </p>
       </section>
 
-      <AdminDashboard initialUsers={users} initialLogs={logs} />
+      <AdminDashboard initialUsers={users} initialLogs={logs} initialServices={services} />
     </main>
   );
 }

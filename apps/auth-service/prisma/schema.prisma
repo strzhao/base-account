@@ -22,6 +22,12 @@ enum ActorType {
   USER
 }
 
+enum ServiceIconMode {
+  FAVICON
+  CUSTOM
+  GENERATED
+}
+
 model User {
   id          String      @id @default(cuid())
   email       String      @unique
@@ -75,6 +81,23 @@ model ServiceConsent {
 
   @@unique([userId, serviceId])
   @@index([serviceId])
+}
+
+model AuthServiceApp {
+  id             String          @id @default(cuid())
+  serviceKey     String          @unique
+  displayName    String
+  origin         String          @unique
+  hostname       String
+  iconUrl        String?
+  iconMode       ServiceIconMode @default(FAVICON)
+  consentSummary String
+  enabled        Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([enabled, updatedAt])
+  @@index([hostname])
 }
 
 model AuditLog {
