@@ -20,7 +20,12 @@ function copyWithLegacyApi(text: string): boolean {
   return copied;
 }
 
-export function CopyForAiButton({ payload }: { payload: string }) {
+type CopyForAiButtonProps = {
+  endpoint?: string;
+  tip?: string;
+};
+
+export function CopyForAiButton({ endpoint = "/api/docs/ai-feed", tip }: CopyForAiButtonProps) {
   const [state, setState] = useState<CopyState>("idle");
 
   async function handleCopy() {
@@ -31,6 +36,18 @@ export function CopyForAiButton({ payload }: { payload: string }) {
     setState("copying");
 
     try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        throw new Error("load_payload_failed");
+      }
+      const contentType = response.headers.get("content-type") ?? "";
+      const payload = contentType.includes("application/json")
+        ? JSON.stringify(await response.json(), null, 2)
+        : await response.text();
+
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(payload);
       } else if (!copyWithLegacyApi(payload)) {
@@ -47,10 +64,10 @@ export function CopyForAiButton({ payload }: { payload: string }) {
   const label =
     state === "copying" ? "复制中..." : state === "copied" ? "已复制给 AI" : "复制给 AI 使用";
 
-  const tip =
+  const defaultTip =
     state === "failed"
       ? "复制失败，请重试"
-      : "包含接入步骤、API 契约、模板代码与机器 JSON";
+      : tip ?? "包含接入步骤、API 契约、模板代码与机器 JSON";
 
   return (
     <div className={styles.wrap}>
@@ -58,7 +75,7 @@ export function CopyForAiButton({ payload }: { payload: string }) {
         {label}
       </button>
       <span className={styles.tip} role="status" aria-live="polite">
-        {tip}
+        {defaultTip}
       </span>
     </div>
   );

@@ -265,6 +265,51 @@
   padding-left: 18px;
 }
 
+.fold {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+}
+
+.fold summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid transparent;
+  user-select: none;
+}
+
+.fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 140ms ease;
+}
+
+.fold[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.fold[open] summary {
+  border-bottom-color: var(--line);
+}
+
+.fold > :not(summary) {
+  padding: 12px;
+}
+
+.machineActions {
+  margin-top: 10px;
+}
+
 .cleanList {
   margin: 14px 0 0;
   padding-left: 20px;

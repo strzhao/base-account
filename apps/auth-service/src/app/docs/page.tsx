@@ -7,7 +7,6 @@ import {
   DOC_VERSION,
   ISSUER,
   JWKS_URL,
-  buildAiFeedText,
   endpointSpecs,
   machineReadableSpec,
   quickStartSteps,
@@ -45,7 +44,6 @@ export const metadata: Metadata = {
 
 export default function DocsPage() {
   const machineJson = JSON.stringify(machineReadableSpec, null, 2);
-  const aiFeedText = buildAiFeedText();
 
   return (
     <main className={`${styles.root} ${titleFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
@@ -54,7 +52,7 @@ export default function DocsPage() {
         <header className={styles.hero}>
           <div className={styles.heroTop}>
             <p className={styles.kicker}>Base Account / Integration</p>
-            <CopyForAiButton payload={aiFeedText} />
+            <CopyForAiButton />
           </div>
           <h1>账号系统接入文档</h1>
           <p className={styles.summary}>
@@ -113,20 +111,23 @@ export default function DocsPage() {
                 </header>
                 <p>{endpoint.purpose}</p>
                 <p className={styles.authHint}>Auth: {endpoint.auth}</p>
-                {endpoint.requestExample ? (
-                  <>
-                    <h4>Request</h4>
-                    <pre>{endpoint.requestExample}</pre>
-                  </>
-                ) : null}
-                <h4>Response</h4>
-                <pre>{endpoint.responseExample}</pre>
-                <h4>Errors</h4>
-                <ul>
-                  {endpoint.errorNotes.map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ul>
+                <details className={styles.fold}>
+                  <summary>展开查看请求/响应示例</summary>
+                  {endpoint.requestExample ? (
+                    <>
+                      <h4>Request</h4>
+                      <pre>{endpoint.requestExample}</pre>
+                    </>
+                  ) : null}
+                  <h4>Response</h4>
+                  <pre>{endpoint.responseExample}</pre>
+                  <h4>Errors</h4>
+                  <ul>
+                    {endpoint.errorNotes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                </details>
               </article>
             ))}
           </div>
@@ -141,9 +142,12 @@ export default function DocsPage() {
                   <h3>{template.title}</h3>
                   <span>{template.runtime}</span>
                 </header>
-                <pre>
-                  <code>{template.code}</code>
-                </pre>
+                <details className={styles.fold}>
+                  <summary>展开查看模板代码</summary>
+                  <pre>
+                    <code>{template.code}</code>
+                  </pre>
+                </details>
               </article>
             ))}
           </div>
@@ -184,12 +188,18 @@ export default function DocsPage() {
           <p className={styles.summary}>
             AI Agent 可直接读取下方 JSON 进行自动接入。结构版本字段为 <code>docVersion</code>。
           </p>
+          <div className={styles.machineActions}>
+            <CopyForAiButton endpoint="/api/docs/machine-spec" tip="复制 Machine Readable JSON" />
+          </div>
           <script
             id="base-account-machine-spec"
             type="application/json"
             dangerouslySetInnerHTML={{ __html: machineJson }}
           />
-          <pre data-machine-readable>{machineJson}</pre>
+          <details className={styles.fold}>
+            <summary>展开查看 Machine Readable JSON</summary>
+            <pre data-machine-readable>{machineJson}</pre>
+          </details>
         </section>
       </div>
     </main>
