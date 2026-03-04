@@ -84,6 +84,18 @@ function normalizeDomainSuffix(input: string): string {
   return normalized.startsWith(".") ? normalized.slice(1) : normalized;
 }
 
+function isValidCookieDomain(input: string): boolean {
+  const normalized = normalizeDomainSuffix(input);
+  if (!normalized) return false;
+  if (normalized.includes("://") || normalized.includes("/") || normalized.includes(" ")) {
+    return false;
+  }
+  if (!normalized.includes(".")) return false;
+  if (normalized.endsWith(".")) return false;
+  if (normalized === "localhost") return false;
+  return /^[a-z0-9.-]+$/.test(normalized);
+}
+
 export function getEnv(): RuntimeEnv {
   if (cachedEnv) {
     return cachedEnv;
@@ -102,9 +114,24 @@ export function getEnv(): RuntimeEnv {
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean)
   );
+  const cookieDomain = parsed.data.AUTH_COOKIE_DOMAIN.trim();
+
+  if (parsed.data.NODE_ENV === "production") {
+    if (!cookieDomain) {
+      throw new Error(
+        "Invalid environment variables: AUTH_COOKIE_DOMAIN: required in production (expected .stringzhao.life)"
+      );
+    }
+    if (!isValidCookieDomain(cookieDomain)) {
+      throw new Error(
+        "Invalid environment variables: AUTH_COOKIE_DOMAIN: must be a valid domain (for example .stringzhao.life)"
+      );
+    }
+  }
 
   cachedEnv = {
     ...parsed.data,
+    AUTH_COOKIE_DOMAIN: cookieDomain,
     AUTH_PRIVATE_KEY_PEM: parseMultilinePem(parsed.data.AUTH_PRIVATE_KEY_PEM),
     AUTH_PUBLIC_KEY_PEM: parseMultilinePem(parsed.data.AUTH_PUBLIC_KEY_PEM),
     adminEmailSet

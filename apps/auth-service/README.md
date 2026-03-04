@@ -4,6 +4,12 @@
 
 Copy `.env.example` to `.env.local` and fill all required values.
 
+Production requirement:
+
+- `AUTH_COOKIE_DOMAIN` must be configured (recommended: `.stringzhao.life`).
+- In `production`, the service fails fast if this value is empty or invalid.
+- This is required for cross-subdomain clients (for example `ai-todo.stringzhao.life`) to send `refresh_token` back through server-side relay endpoints.
+
 ## Commands
 
 - `npm run dev`
