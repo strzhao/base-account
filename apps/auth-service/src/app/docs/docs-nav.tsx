@@ -1,0 +1,34 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import styles from "./docs.module.css";
+
+const tabs = [
+  { href: "/docs", label: "Overview" },
+  { href: "/docs/auth", label: "Auth API" },
+  { href: "/docs/invitation-codes", label: "Invitation Codes" },
+  { href: "/docs/machine-spec", label: "Machine Spec" }
+];
+
+export function DocsNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className={styles.nav}>
+      {tabs.map((tab) => {
+        const active = tab.href === "/docs" ? pathname === "/docs" : pathname.startsWith(tab.href);
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={active ? styles.navLinkActive : undefined}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
