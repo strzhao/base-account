@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import styles from "./docs.module.css";
 
 const tabs = [
-  { href: "/docs", label: "Overview" },
-  { href: "/docs/auth", label: "Auth API" },
-  { href: "/docs/invitation-codes", label: "Invitation Codes" },
-  { href: "/docs/machine-spec", label: "Machine Spec" }
+  { href: "/docs" as const, label: "Overview" },
+  { href: "/docs/auth" as const, label: "Auth API" },
+  { href: "/docs/invitation-codes" as const, label: "Invitation Codes" },
+  { href: "/docs/machine-spec" as const, label: "Machine Spec" }
 ];
 
 export function DocsNav() {
