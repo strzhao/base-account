@@ -183,9 +183,7 @@ async function checkVercelAllowlist({
     body.includes("未开通授权服务") ||
     body.includes("请求已拦截");
   if (blockedByService) {
-    return {
-      warning: "vercel.app 域名已通过白名单校验，但未在后台 Services 开通"
-    };
+    return "vercel.app 域名已通过白名单校验（Services 未开通，属预期）";
   }
 
   return {
