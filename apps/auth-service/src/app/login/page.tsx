@@ -212,7 +212,7 @@ function LoginPageContent() {
             : "请输入邮箱，我们会发送一次性验证码。"}
           </p>
 
-          <form onSubmit={step === "email" ? onSendCode : onVerifyCode} className={styles.form}>
+          <form action="/login" method="POST" onSubmit={step === "email" ? onSendCode : onVerifyCode} className={styles.form}>
             <label htmlFor="email" className={styles.label}>邮箱</label>
             <div className={styles.emailRow}>
               <input
