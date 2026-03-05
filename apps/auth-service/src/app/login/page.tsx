@@ -129,8 +129,7 @@ function LoginPageContent() {
     window.location.assign(path);
   }
 
-  async function onSendCode(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function sendCode() {
     setBusy(true);
     setMessage(null);
     setError(null);
@@ -158,6 +157,11 @@ function LoginPageContent() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onSendCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await sendCode();
   }
 
   async function onVerifyCode(event: FormEvent<HTMLFormElement>) {
@@ -208,56 +212,81 @@ function LoginPageContent() {
             : "请输入邮箱，我们会发送一次性验证码。"}
           </p>
 
-          {step === "email" ? (
-            <form onSubmit={onSendCode} className={styles.form}>
-              <label htmlFor="email" className={styles.label}>邮箱</label>
+          <form onSubmit={step === "email" ? onSendCode : onVerifyCode} className={styles.form}>
+            <label htmlFor="email" className={styles.label}>邮箱</label>
+            <div className={styles.emailRow}>
               <input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                autoFocus
-                className={styles.input}
+                autoFocus={step === "email"}
+                readOnly={step === "code"}
+                className={`${styles.input} ${step === "code" ? styles.inputReadonly : ""}`}
               />
-              <div className={styles.actions}>
-                <button type="submit" disabled={busy || !email.trim()} className={styles.primaryButton}>
-                  {busy ? "发送中..." : "发送验证码"}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={onVerifyCode} className={styles.form}>
-              <label htmlFor="code" className={styles.label}>验证码</label>
-              <input
-                id="code"
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoFocus
-                required
-                className={styles.input}
-              />
-              <div className={styles.actions}>
-                <button type="submit" disabled={busy || !code.trim()} className={styles.primaryButton}>
-                  {busy ? "验证中..." : "验证并登录"}
-                </button>
+              {step === "code" && (
                 <button
                   type="button"
-                  className={styles.secondaryButton}
+                  className={styles.changeButton}
                   onClick={() => {
                     setStep("email");
                     setCode("");
                     setError(null);
                     setMessage(null);
+                    setDebugCode(null);
                   }}
                 >
-                  返回
+                  修改
                 </button>
-              </div>
-            </form>
-          )}
+              )}
+            </div>
+
+            {step === "code" && (
+              <>
+                <label htmlFor="code" className={styles.label}>验证码</label>
+                <input
+                  id="code"
+                  name="code"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  required
+                  className={styles.input}
+                />
+              </>
+            )}
+
+            <div className={styles.actions}>
+              {step === "email" ? (
+                <button type="submit" disabled={busy || !email.trim()} className={styles.primaryButton}>
+                  {busy ? "发送中..." : "发送验证码"}
+                </button>
+              ) : (
+                <>
+                  <button type="submit" disabled={busy || !code.trim()} className={styles.primaryButton}>
+                    {busy ? "验证中..." : "验证并登录"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.linkButton}
+                    disabled={busy}
+                    onClick={() => {
+                      setCode("");
+                      sendCode();
+                    }}
+                  >
+                    重新发送
+                  </button>
+                </>
+              )}
+            </div>
+          </form>
 
           {message ? <p className={styles.info}><small>{message}</small></p> : null}
           {error ? <p className={styles.error}><small>{error}</small></p> : null}

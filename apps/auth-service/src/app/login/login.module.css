@@ -60,6 +60,59 @@
   outline-offset: 1px;
 }
 
+.inputReadonly {
+  background: rgba(240, 238, 232, 0.8);
+  color: #7a8279;
+  cursor: default;
+}
+
+.emailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emailRow .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.changeButton {
+  border: none;
+  background: none;
+  color: #4f6f64;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 2px;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.changeButton:hover {
+  color: #3a5449;
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  color: #5a6159;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 2px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkButton:hover {
+  color: #3a5449;
+}
+
+.linkButton[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .actions {
   margin-top: 6px;
   display: flex;
