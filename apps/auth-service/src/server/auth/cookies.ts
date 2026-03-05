@@ -82,6 +82,23 @@ export function setAuthCookies(
   }
 }
 
+export function setAccessCookieOnly(response: NextResponse, accessToken: string): void {
+  const env = getEnv();
+  const configuredDomain = getConfiguredCookieDomain();
+
+  if (configuredDomain) {
+    response.cookies.set(
+      ACCESS_COOKIE,
+      accessToken,
+      getCookieBaseOptions(env.ACCESS_TOKEN_EXPIRES_IN_SEC, configuredDomain)
+    );
+    appendCookie(response, ACCESS_COOKIE, "", 0);
+    return;
+  }
+
+  response.cookies.set(ACCESS_COOKIE, accessToken, getCookieBaseOptions(env.ACCESS_TOKEN_EXPIRES_IN_SEC));
+}
+
 export function clearAuthCookies(response: NextResponse): void {
   const env = getEnv();
   const configuredDomain = getConfiguredCookieDomain();

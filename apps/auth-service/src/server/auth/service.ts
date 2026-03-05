@@ -343,12 +343,22 @@ export async function verifyLoginCode(input: VerifyCodeInput): Promise<AuthSucce
   };
 }
 
-export async function refreshSession(input: RefreshInput): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+type RefreshResult = {
+  accessToken: string;
+  refreshToken: string | null;
+  expiresIn: number;
+  isGraceHit: boolean;
+};
+
+const REFRESH_GRACE_PERIOD_MS = 30_000;
+
+export async function refreshSession(input: RefreshInput): Promise<RefreshResult> {
   const env = getEnv();
   const now = new Date();
   const incomingRefreshHash = hashValue(input.refreshToken, env.AUTH_HASH_PEPPER);
 
-  const existingSession = await prisma.session.findUnique({
+  // 1. Normal path: look up by current refreshTokenHash
+  let session = await prisma.session.findUnique({
     where: {
       refreshTokenHash: incomingRefreshHash
     },
@@ -357,14 +367,36 @@ export async function refreshSession(input: RefreshInput): Promise<{ accessToken
     }
   });
 
-  if (!existingSession || existingSession.revokedAt || existingSession.expiresAt.getTime() <= now.getTime()) {
-    throw new AuthError("invalid_refresh_token", "Refresh token is invalid or expired.", 401);
+  let isGraceHit = false;
+
+  const isSessionValid = session && !session.revokedAt && session.expiresAt.getTime() > now.getTime();
+
+  if (!isSessionValid) {
+    // 2. Grace period: the token may have just been rotated by a concurrent request
+    const graceSession = await prisma.session.findFirst({
+      where: {
+        previousRefreshTokenHash: incomingRefreshHash,
+        revokedAt: null,
+        rotatedAt: { gte: new Date(now.getTime() - REFRESH_GRACE_PERIOD_MS) },
+        expiresAt: { gt: now }
+      },
+      include: {
+        user: true
+      }
+    });
+
+    if (!graceSession) {
+      throw new AuthError("invalid_refresh_token", "Refresh token is invalid or expired.", 401);
+    }
+
+    session = graceSession;
+    isGraceHit = true;
   }
 
-  if (existingSession.user.status === UserStatus.DISABLED) {
+  if (session!.user.status === UserStatus.DISABLED) {
     await prisma.session.update({
       where: {
-        id: existingSession.id
+        id: session!.id
       },
       data: {
         revokedAt: now
@@ -374,16 +406,35 @@ export async function refreshSession(input: RefreshInput): Promise<{ accessToken
     throw new AuthError("account_disabled", "Your account has been disabled.", 403);
   }
 
+  const accessToken = await signAccessToken({
+    sub: session!.user.id,
+    email: session!.user.email,
+    status: session!.user.status
+  });
+
+  if (isGraceHit) {
+    // Grace hit: only issue a new access token, do not rotate refresh token again
+    return {
+      accessToken,
+      refreshToken: null,
+      expiresIn: env.ACCESS_TOKEN_EXPIRES_IN_SEC,
+      isGraceHit: true
+    };
+  }
+
+  // Normal path: rotate refresh token
   const nextRefreshToken = generateOpaqueToken(48);
   const nextRefreshTokenHash = hashValue(nextRefreshToken, env.AUTH_HASH_PEPPER);
   const nextRefreshExpiry = new Date(now.getTime() + env.REFRESH_TOKEN_EXPIRES_IN_SEC * 1000);
 
   await prisma.session.update({
     where: {
-      id: existingSession.id
+      id: session!.id
     },
     data: {
       refreshTokenHash: nextRefreshTokenHash,
+      previousRefreshTokenHash: incomingRefreshHash,
+      rotatedAt: now,
       expiresAt: nextRefreshExpiry,
       ip: input.client.ip,
       userAgent: input.client.userAgent
@@ -392,25 +443,20 @@ export async function refreshSession(input: RefreshInput): Promise<{ accessToken
 
   await createAuditLog({
     actorType: ActorType.USER,
-    actorId: existingSession.user.id,
+    actorId: session!.user.id,
     action: "AUTH_TOKEN_REFRESH",
     targetType: "Session",
-    targetId: existingSession.id,
+    targetId: session!.id,
     metadata: {
       ip: input.client.ip ?? null
     }
   });
 
-  const accessToken = await signAccessToken({
-    sub: existingSession.user.id,
-    email: existingSession.user.email,
-    status: existingSession.user.status
-  });
-
   return {
     accessToken,
     refreshToken: nextRefreshToken,
-    expiresIn: env.ACCESS_TOKEN_EXPIRES_IN_SEC
+    expiresIn: env.ACCESS_TOKEN_EXPIRES_IN_SEC,
+    isGraceHit: false
   };
 }
 

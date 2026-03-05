@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { setAuthCookies } from "@/server/auth/cookies";
+import { setAccessCookieOnly, setAuthCookies } from "@/server/auth/cookies";
 import { handleRouteError } from "@/server/auth/errors";
 import { readRefreshFromBodyOrCookie } from "@/server/auth/request";
 import { extractClientMeta, refreshSession } from "@/server/auth/service";
@@ -42,7 +42,14 @@ export async function POST(request: Request) {
     });
 
     const response = NextResponse.json(result);
-    setAuthCookies(response, result.accessToken, result.refreshToken);
+
+    if (result.isGraceHit) {
+      // Grace period hit: only set access_token cookie.
+      // The first concurrent request already set the new refresh_token.
+      setAccessCookieOnly(response, result.accessToken);
+    } else {
+      setAuthCookies(response, result.accessToken, result.refreshToken!);
+    }
 
     return response;
   } catch (error) {

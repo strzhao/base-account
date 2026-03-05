@@ -24,7 +24,7 @@ const envSchema = z.object({
   AUTH_PUBLIC_KEY_PEM: z.string().min(1),
   AUTH_HASH_PEPPER: z.string().min(16),
   AUTH_COOKIE_DOMAIN: z.string().optional().default(""),
-  ACCESS_TOKEN_EXPIRES_IN_SEC: intFromEnv(900),
+  ACCESS_TOKEN_EXPIRES_IN_SEC: intFromEnv(60 * 60 * 24 * 30),
   REFRESH_TOKEN_EXPIRES_IN_SEC: intFromEnv(60 * 60 * 24 * 30),
   EMAIL_CODE_TTL_SEC: intFromEnv(600),
   EMAIL_CODE_COOLDOWN_SEC: intFromEnv(60),
