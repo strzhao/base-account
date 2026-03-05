@@ -8,6 +8,9 @@ import {
   ISSUER,
   JWKS_URL,
   endpointSpecs,
+  invitationCodeEndpoints,
+  invitationCodeSteps,
+  invitationCodeTemplate,
   machineReadableSpec,
   quickStartSteps,
   rolloutChecklist,
@@ -80,6 +83,7 @@ export default function DocsPage() {
             <a href="#quick-start">Quick Start</a>
             <a href="#api-contract">API Contract</a>
             <a href="#templates">Templates</a>
+            <a href="#invitation-codes">Invitation Codes</a>
             <a href="#external-checklist">External Checklist</a>
             <a href="#machine-spec">Machine Spec</a>
             <Link href="/login">Login</Link>
@@ -150,6 +154,73 @@ export default function DocsPage() {
                 </details>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section id="invitation-codes" className={styles.section}>
+          <h2>Invitation Codes</h2>
+          <p className={styles.summary}>
+            邀请码系统允许已登录用户为指定应用生成一次性邀请码（每用户每应用默认 3 个）。
+            兑换后系统记录邀请关系（谁邀请了谁），下游服务可据此做增长分析和奖励机制。
+          </p>
+
+          <h3>接入步骤</h3>
+          <ol className={styles.steps}>
+            {invitationCodeSteps.map((step) => (
+              <li key={step.title}>
+                <h3>{step.title}</h3>
+                <p>{step.detail}</p>
+              </li>
+            ))}
+          </ol>
+
+          <h3>API 端点</h3>
+          <div className={styles.endpointList}>
+            {invitationCodeEndpoints.map((endpoint) => (
+              <article key={`${endpoint.method}-${endpoint.path}`} className={styles.endpointCard}>
+                <header>
+                  <span className={endpoint.method === "GET" ? styles.methodGet : styles.methodPost}>
+                    {endpoint.method}
+                  </span>
+                  <code>{endpoint.path}</code>
+                </header>
+                <p>{endpoint.purpose}</p>
+                <p className={styles.authHint}>Auth: {endpoint.auth}</p>
+                <details className={styles.fold}>
+                  <summary>展开查看请求/响应示例</summary>
+                  {endpoint.requestExample ? (
+                    <>
+                      <h4>Request</h4>
+                      <pre>{endpoint.requestExample}</pre>
+                    </>
+                  ) : null}
+                  <h4>Response</h4>
+                  <pre>{endpoint.responseExample}</pre>
+                  <h4>Errors</h4>
+                  <ul>
+                    {endpoint.errorNotes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                </details>
+              </article>
+            ))}
+          </div>
+
+          <h3>集成模板</h3>
+          <div className={styles.templateList}>
+            <article className={styles.templateCard}>
+              <header>
+                <h3>{invitationCodeTemplate.title}</h3>
+                <span>{invitationCodeTemplate.runtime}</span>
+              </header>
+              <details className={styles.fold}>
+                <summary>展开查看模板代码</summary>
+                <pre>
+                  <code>{invitationCodeTemplate.code}</code>
+                </pre>
+              </details>
+            </article>
           </div>
         </section>
 

@@ -33,6 +33,17 @@ export function generateOpaqueToken(bytes = 48): string {
   return randomBytes(bytes).toString("base64url");
 }
 
+const INVITATION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generateInvitationCode(length = 8): string {
+  const bytes = randomBytes(length);
+  const chars: string[] = [];
+  for (let i = 0; i < length; i++) {
+    chars.push(INVITATION_ALPHABET[bytes[i] % INVITATION_ALPHABET.length]);
+  }
+  return chars.join("");
+}
+
 export function getClientIp(headers: Headers): string | undefined {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {

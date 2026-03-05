@@ -28,6 +28,12 @@ enum ServiceIconMode {
   GENERATED
 }
 
+enum InvitationCodeStatus {
+  ACTIVE
+  REDEEMED
+  REVOKED
+}
+
 model User {
   id          String      @id @default(cuid())
   email       String      @unique
@@ -37,6 +43,8 @@ model User {
   updatedAt   DateTime    @updatedAt
   sessions    Session[]
   consents    ServiceConsent[]
+  createdInvitations  InvitationCode[] @relation("createdInvitations")
+  redeemedInvitations InvitationCode[] @relation("redeemedInvitations")
 
   @@index([status])
 }
@@ -115,6 +123,24 @@ model AuditLog {
 
   @@index([action, createdAt])
   @@index([targetType, targetId])
+}
+
+model InvitationCode {
+  id         String               @id @default(cuid())
+  code       String               @unique
+  serviceKey String
+  creatorId  String
+  status     InvitationCodeStatus @default(ACTIVE)
+  redeemedBy String?
+  redeemedAt DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  creator    User                 @relation("createdInvitations", fields: [creatorId], references: [id], onDelete: Cascade)
+  redeemer   User?                @relation("redeemedInvitations", fields: [redeemedBy], references: [id], onDelete: SetNull)
+
+  @@index([serviceKey, creatorId])
+  @@index([serviceKey, status])
+  @@index([redeemedBy])
 }
 
 model JwkKey {

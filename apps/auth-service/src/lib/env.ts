@@ -29,6 +29,7 @@ const envSchema = z.object({
   EMAIL_CODE_TTL_SEC: intFromEnv(600),
   EMAIL_CODE_COOLDOWN_SEC: intFromEnv(60),
   EMAIL_CODE_MAX_ATTEMPTS: intFromEnv(5),
+  INVITATION_CODE_QUOTA_PER_APP: intFromEnv(3),
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().default("auth@example.com"),
   ADMIN_EMAILS: z.string().optional().default(""),
