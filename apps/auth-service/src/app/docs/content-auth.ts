@@ -12,8 +12,8 @@ export const quickStartSteps: QuickStep[] = [
     detail: "外部服务统一跳转 /authorize?return_to&state（service 可传但会被忽略），禁止直接跳 /login。"
   },
   {
-    title: "后台登记服务域名",
-    detail: "在 Admin Console 的 Services 区域先登记/启用 origin，再让外部服务发起授权。"
+    title: "登记服务域名",
+    detail: "推荐通过 CLI 注册服务：ba admin services create --origin https://your-app.example.com（也可在 Admin Console 的 Services 区域手动登记）。需先登记/启用 origin，再让外部服务发起授权。"
   },
   {
     title: "处理回跳并建立应用会话",
@@ -394,7 +394,7 @@ export const rolloutChecklist: string[] = [
   "AUTH_ISSUER 与账号服务域名保持一致（当前: https://user.stringzhao.life）。",
   "AUTH_AUDIENCE 在账号服务和下游服务严格一致（当前: base-account-client）。",
   "AUTH_JWKS_URL 配置为 https://user.stringzhao.life/.well-known/jwks.json。",
-  "新接入服务需要先在 Admin Console -> Services 登记并启用 origin。",
+  "新接入服务需要先登记并启用 origin。推荐使用 CLI：ba admin services create --origin <url>（也可在 Admin Console -> Services 手动操作）。",
   "/authorize 的 service 参数已弃用（兼容保留，但后端不再依赖该参数判定服务）。",
   "AUTH_ALLOWED_RETURN_ORIGINS 建议至少包含 http://localhost:3000, https://user.stringzhao.life, https://stringzhao.life。",
   "AUTH_ALLOWED_RETURN_SUFFIXES 建议配置为 .stringzhao.life,.vercel.app（一次覆盖你全部 Vercel 服务）。",
@@ -409,7 +409,7 @@ export const externalIntegrationChecklist: string[] = [
   "service 参数可传可不传（兼容保留），但不能再用于服务身份判定。",
   "发起授权前生成并持久化 state（建议 randomUUID + sessionStorage）。",
   "回跳后必须校验 authorized=1 且 returned state 与本地 state 完全一致。",
-  "每个业务回跳域名（return_to origin）需先在 /admin -> Services 开通并启用。",
+  "每个业务回跳域名（return_to origin）需先开通并启用。推荐使用 CLI：ba admin services create --origin <url>（也可在 /admin -> Services 手动操作）。",
   "回跳后在服务端读取共享 access_token cookie 并验签 JWT（避免前端 CORS），然后创建应用自有的 gateway session cookie 作为日常登录态。不建议直接依赖共享 access_token cookie（跨应用账号污染风险）。",
   "后端 JWT 验签配置保持一致：AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL。",
   "业务侧显式处理 400 invalid_service / 400 invalid_return_to / 401 invalid_access_token。",
@@ -435,7 +435,7 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
   },
   {
     title: "400 invalid_service",
-    fix: "当前 return_to origin 尚未在后台 Services 开通，先登记并启用该域名。"
+    fix: "当前 return_to origin 尚未开通。推荐使用 CLI 注册：ba admin services create --origin <url>（也可在 Admin Console -> Services 手动登记并启用）。"
   },
   {
     title: "回跳后 state mismatch",
@@ -473,6 +473,11 @@ export function buildAuthFeedText(): string {
   lines.push(`jwksUrl: ${JWKS_URL}`);
   lines.push("");
 
+  lines.push("## 推荐工具");
+  lines.push("优先使用 CLI 工具 `ba` 完成服务注册和管理操作，无需访问 Admin Console。");
+  lines.push("安装：npm install -g @stringzhao/base-account-cli");
+  lines.push("注册服务：ba admin services create --origin https://your-app.example.com");
+  lines.push("");
   lines.push("## Integration Steps");
   quickStartSteps.forEach((step, index) => {
     lines.push(`${index + 1}. ${step.title}: ${step.detail}`);

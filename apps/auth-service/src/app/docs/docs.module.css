@@ -91,6 +91,17 @@
   line-height: 1.7;
 }
 
+.cliTip {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
 .metaRow {
   margin-top: 16px;
   display: grid;

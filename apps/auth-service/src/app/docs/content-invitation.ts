@@ -5,7 +5,7 @@ export const invitationCodeSteps: QuickStep[] = [
   {
     title: "生成邀请码",
     detail:
-      "已登录用户调用 POST /api/auth/invitation-codes/generate，传入 serviceKey，获得 8 位邀请码。每用户每应用默认可生成 3 个。"
+      "已登录用户调用 POST /api/auth/invitation-codes/generate，传入 serviceKey，获得 8 位邀请码。每用户每应用默认可生成 3 个。serviceKey 需先通过 CLI 注册服务：ba admin services create --origin https://your-app.example.com。"
   },
   {
     title: "分享邀请码",
@@ -14,7 +14,7 @@ export const invitationCodeSteps: QuickStep[] = [
   {
     title: "受邀人兑换",
     detail:
-      "受邀人登录后调用 POST /api/auth/invitation-codes/redeem，传入邀请码。系统记录邀请关系并返回 serviceKey 和邀请者 ID。"
+      "受邀人登录后调用 POST /api/auth/invitation-codes/redeem，仅需传入 code（不需要 serviceKey）。系统自动从邀请码记录中读取 serviceKey，记录邀请关系并返回 serviceKey 和邀请者 ID。"
   },
   {
     title: "下游业务处理",
@@ -28,7 +28,7 @@ export const invitationCodeEndpoints: EndpointSpec[] = [
     method: "POST",
     path: "/api/auth/invitation-codes/generate",
     auth: "access_token",
-    purpose: "为当前用户在指定应用下生成一个一次性邀请码。每用户每应用有配额限制（默认 3）。",
+    purpose: "为当前用户在指定应用下生成一个一次性邀请码。每用户每应用有配额限制（默认 3）。serviceKey 需先通过 CLI 注册：ba admin services create --origin <url>。",
     requestExample: `{
   "serviceKey": "my-app"
 }`,
@@ -55,7 +55,7 @@ export const invitationCodeEndpoints: EndpointSpec[] = [
     method: "POST",
     path: "/api/auth/invitation-codes/redeem",
     auth: "access_token",
-    purpose: "兑换邀请码。一次性使用，兑换后记录邀请关系（谁邀请了谁）。不能兑换自己生成的码。",
+    purpose: "兑换邀请码。仅需传入 code，无需 serviceKey（系统自动从邀请码记录中读取）。一次性使用，兑换后记录邀请关系（谁邀请了谁）。不能兑换自己生成的码。",
     requestExample: `{
   "code": "ABCD1234"
 }`,
@@ -75,7 +75,7 @@ export const invitationCodeEndpoints: EndpointSpec[] = [
     method: "POST",
     path: "/api/auth/invitation-codes/validate",
     auth: "access_token",
-    purpose: "仅校验邀请码有效性，不消费。适用于前端实时校验场景。",
+    purpose: "仅校验邀请码有效性，不消费。仅需传入 code，无需 serviceKey。适用于前端实时校验场景。",
     requestExample: `{
   "code": "ABCD1234"
 }`,
@@ -132,6 +132,10 @@ export const invitationCodeTemplate: TemplateSpec = {
   title: "邀请码接入流程",
   runtime: "Browser / Web App",
   code: `const BASE = "https://user.stringzhao.life";
+// SERVICE_KEY 需先通过 CLI 注册服务获得：
+//   npm install -g @stringzhao/base-account-cli
+//   ba admin services create --origin https://your-app.example.com
+// 注册后会返回 serviceKey（格式：svc-xxx）
 const SERVICE_KEY = "my-app";
 
 // 1) 生成邀请码（邀请者操作）
@@ -182,6 +186,13 @@ export function buildInvitationCodesFeedText(): string {
   lines.push(`docVersion: ${DOC_VERSION}`);
   lines.push(`issuer: ${ISSUER}`);
   lines.push("每用户每应用可生成 N 个一次性邀请码（默认 3），兑换后记录邀请关系。");
+  lines.push("");
+  lines.push("## 推荐工具");
+  lines.push("优先使用 CLI 工具 `ba` 完成服务注册和邀请码管理，无需访问 Admin Console。");
+  lines.push("安装：npm install -g @stringzhao/base-account-cli");
+  lines.push("注册服务：ba admin services create --origin https://your-app.example.com");
+  lines.push("生成邀请码：ba invitation-codes generate -s <serviceKey>");
+  lines.push("兑换邀请码：ba invitation-codes redeem -c <code>（仅需 code，无需 serviceKey）");
   lines.push("");
 
   lines.push("## Integration Steps");

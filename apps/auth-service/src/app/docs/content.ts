@@ -83,6 +83,11 @@ export const machineReadableSpec = {
 
 export function buildAiFeedText(): string {
   const lines: string[] = [];
+  lines.push("## 推荐：使用 CLI 工具");
+  lines.push("所有管理操作（服务注册、邀请码、用户管理等）推荐通过 CLI 完成：");
+  lines.push("npm install -g @stringzhao/base-account-cli");
+  lines.push("详见下方 CLI Tool 章节。");
+  lines.push("");
   lines.push(buildAuthFeedText());
   lines.push("");
   lines.push(buildInvitationCodesFeedText());

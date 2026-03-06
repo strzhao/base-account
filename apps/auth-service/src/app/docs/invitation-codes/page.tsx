@@ -20,6 +20,13 @@ export default function InvitationCodesDocsPage() {
           兑换后系统记录邀请关系（谁邀请了谁），下游服务可据此做增长分析和奖励机制。
         </p>
 
+        <p className={styles.cliTip}>
+          推荐使用 CLI 管理邀请码：<code>npm install -g @stringzhao/base-account-cli</code>。
+          注册服务：<code>ba admin services create --origin &lt;url&gt;</code>，
+          生成邀请码：<code>ba invitation-codes generate -s &lt;serviceKey&gt;</code>。
+          兑换邀请码仅需 code，无需 serviceKey。
+        </p>
+
         <h3>接入步骤</h3>
         <ol className={styles.steps}>
           {invitationCodeSteps.map((step) => (

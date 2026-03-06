@@ -81,6 +81,15 @@ ba admin services toggle <serviceId> --enabled
 ba admin api-keys list             # 列出所有 API Key
 ba admin api-keys create --name "ci-bot"   # 创建（仅显示一次）
 ba admin api-keys revoke <id>      # 吊销
+\`\`\`
+
+**邀请码管理**
+\`\`\`bash
+ba invitation-codes list -s <serviceKey>        # 列出我的邀请码和配额
+ba invitation-codes generate -s <serviceKey>    # 生成邀请码
+ba invitation-codes validate -c <code>          # 校验邀请码（不消费）
+ba invitation-codes redeem -c <code>            # 兑换邀请码（仅需 code，无需 serviceKey）
+ba invitation-codes revoke --codeId <id>        # 撤销邀请码
 \`\`\``
   },
   {

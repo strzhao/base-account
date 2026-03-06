@@ -23,6 +23,10 @@ export default function DocsOverviewPage() {
         </ol>
       </section>
 
+      <p className={styles.cliTip}>
+        推荐使用 CLI 工具完成服务注册和管理操作，无需访问 Admin Console：<code>npm install -g @stringzhao/base-account-cli</code>
+      </p>
+
       <div className={styles.capabilityGrid}>
         <Link href="/docs/auth" className={styles.capabilityCard}>
           <h3>Auth API</h3>

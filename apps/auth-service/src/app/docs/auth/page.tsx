@@ -17,6 +17,10 @@ export default function AuthDocsPage() {
           <h2>API Contract</h2>
           <CopyForAiButton endpoint="/api/docs/ai-feed?topic=auth" tip="仅复制认证系统文档" />
         </div>
+        <p className={styles.cliTip}>
+          推荐使用 CLI 完成服务注册和管理操作：<code>npm install -g @stringzhao/base-account-cli</code>。
+          注册服务：<code>ba admin services create --origin &lt;url&gt;</code>，无需访问 Admin Console。
+        </p>
         <div className={styles.endpointList}>
           {endpointSpecs.map((endpoint) => (
             <article key={`${endpoint.method}-${endpoint.path}`} className={styles.endpointCard}>
