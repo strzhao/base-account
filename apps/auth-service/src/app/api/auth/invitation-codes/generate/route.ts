@@ -3,8 +3,7 @@ import { z } from "zod";
 
 import { handleRouteError } from "@/server/auth/errors";
 import { createInvitationCode } from "@/server/auth/invitation";
-import { readBearerOrAccessCookie } from "@/server/auth/request";
-import { getCurrentUserFromAccessToken } from "@/server/auth/service";
+import { resolveUserFromRequest } from "@/server/auth/request";
 
 const schema = z.object({
   serviceKey: z.string().trim().min(1)
@@ -12,15 +11,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const accessToken = readBearerOrAccessCookie(request);
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "missing_access_token", message: "Access token is required." },
-        { status: 401 }
-      );
-    }
-
-    const user = await getCurrentUserFromAccessToken(accessToken);
+    const user = await resolveUserFromRequest(request);
 
     const body = await request.json().catch(() => ({}));
     const parsed = schema.safeParse(body);

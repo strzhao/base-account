@@ -121,6 +121,49 @@ export function buildCliManifest(): CliManifest {
         ]
       },
 
+      // --- Invitation Codes ---
+      {
+        path: ["invitation-codes", "list"],
+        description: "List my invitation codes for a service",
+        api: { method: "GET", path: "/api/auth/invitation-codes" },
+        options: [
+          { name: "serviceKey", short: "s", description: "Service key", required: true, type: "string" }
+        ],
+        outputHint: "table"
+      },
+      {
+        path: ["invitation-codes", "generate"],
+        description: "Generate a new invitation code",
+        api: { method: "POST", path: "/api/auth/invitation-codes/generate" },
+        options: [
+          { name: "serviceKey", short: "s", description: "Service key", required: true, type: "string" }
+        ]
+      },
+      {
+        path: ["invitation-codes", "validate"],
+        description: "Validate an invitation code (check if it is valid and unused)",
+        api: { method: "POST", path: "/api/auth/invitation-codes/validate" },
+        options: [
+          { name: "code", short: "c", description: "Invitation code to validate", required: true, type: "string" }
+        ]
+      },
+      {
+        path: ["invitation-codes", "redeem"],
+        description: "Redeem an invitation code",
+        api: { method: "POST", path: "/api/auth/invitation-codes/redeem" },
+        options: [
+          { name: "code", short: "c", description: "Invitation code to redeem", required: true, type: "string" }
+        ]
+      },
+      {
+        path: ["invitation-codes", "revoke"],
+        description: "Revoke an invitation code",
+        api: { method: "POST", path: "/api/auth/invitation-codes/revoke" },
+        options: [
+          { name: "codeId", description: "Invitation code ID", required: true, type: "string" }
+        ]
+      },
+
       // --- Email Codes ---
       {
         path: ["admin", "email-codes", "list"],

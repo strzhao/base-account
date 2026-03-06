@@ -2,7 +2,7 @@ import type { UserDTO } from "@/types/auth";
 
 import { verifyApiKeyAndGetUser } from "@/server/auth/api-key";
 import { AuthError } from "@/server/auth/errors";
-import { isAdminEmail, requireAdminFromAccessToken } from "@/server/auth/service";
+import { getCurrentUserFromAccessToken, isAdminEmail, requireAdminFromAccessToken } from "@/server/auth/service";
 import { readAccessFromCookieHeader, readRefreshFromCookieHeader } from "@/server/auth/token-cookie";
 
 export function readBearerOrAccessCookie(request: Request): string | undefined {
@@ -40,4 +40,17 @@ export async function resolveAdminFromRequest(request: Request): Promise<UserDTO
   }
 
   return requireAdminFromAccessToken(token);
+}
+
+export async function resolveUserFromRequest(request: Request): Promise<UserDTO> {
+  const token = readBearerOrAccessCookie(request);
+  if (!token) {
+    throw new AuthError("missing_credentials", "Authentication required.", 401);
+  }
+
+  if (token.startsWith("ba_k_")) {
+    return verifyApiKeyAndGetUser(token);
+  }
+
+  return getCurrentUserFromAccessToken(token);
 }

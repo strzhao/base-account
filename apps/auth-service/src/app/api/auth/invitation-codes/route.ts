@@ -2,20 +2,11 @@ import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/auth/errors";
 import { listMyInvitationCodes } from "@/server/auth/invitation";
-import { readBearerOrAccessCookie } from "@/server/auth/request";
-import { getCurrentUserFromAccessToken } from "@/server/auth/service";
+import { resolveUserFromRequest } from "@/server/auth/request";
 
 export async function GET(request: Request) {
   try {
-    const accessToken = readBearerOrAccessCookie(request);
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "missing_access_token", message: "Access token is required." },
-        { status: 401 }
-      );
-    }
-
-    const user = await getCurrentUserFromAccessToken(accessToken);
+    const user = await resolveUserFromRequest(request);
 
     const url = new URL(request.url);
     const serviceKey = url.searchParams.get("serviceKey");
