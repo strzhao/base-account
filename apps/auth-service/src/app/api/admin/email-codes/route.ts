@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/auth/errors";
-import { readBearerOrAccessCookie } from "@/server/auth/request";
-import { listEmailCodeLogsForAdmin, requireAdminFromAccessToken } from "@/server/auth/service";
+import { resolveAdminFromRequest } from "@/server/auth/request";
+import { listEmailCodeLogsForAdmin } from "@/server/auth/service";
 
 export async function GET(request: Request) {
   try {
-    const accessToken = readBearerOrAccessCookie(request);
-    if (!accessToken) {
-      return NextResponse.json(
-        {
-          error: "missing_access_token",
-          message: "Access token is required."
-        },
-        { status: 401 }
-      );
-    }
-
-    await requireAdminFromAccessToken(accessToken);
+    await resolveAdminFromRequest(request);
 
     const { searchParams } = new URL(request.url);
     const limitRaw = searchParams.get("limit");

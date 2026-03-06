@@ -9,6 +9,7 @@ const tabs = [
   { href: "/docs" as const, label: "Overview" },
   { href: "/docs/auth" as const, label: "Auth API" },
   { href: "/docs/invitation-codes" as const, label: "Invitation Codes" },
+  { href: "/docs/cli" as const, label: "CLI" },
   { href: "/docs/machine-spec" as const, label: "Machine Spec" }
 ];
 

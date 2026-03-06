@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/auth/errors";
-import { readBearerOrAccessCookie } from "@/server/auth/request";
+import { resolveAdminFromRequest } from "@/server/auth/request";
 import {
   createAuthServiceForAdmin,
   listAuthServicesForAdmin
 } from "@/server/auth/service-registry";
-import { requireAdminFromAccessToken } from "@/server/auth/service";
 
 const createServiceSchema = z.object({
   origin: z.string().trim().min(1),
@@ -20,18 +19,7 @@ const createServiceSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const accessToken = readBearerOrAccessCookie(request);
-    if (!accessToken) {
-      return NextResponse.json(
-        {
-          error: "missing_access_token",
-          message: "Access token is required."
-        },
-        { status: 401 }
-      );
-    }
-
-    await requireAdminFromAccessToken(accessToken);
+    await resolveAdminFromRequest(request);
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") ?? undefined;
@@ -44,18 +32,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const accessToken = readBearerOrAccessCookie(request);
-    if (!accessToken) {
-      return NextResponse.json(
-        {
-          error: "missing_access_token",
-          message: "Access token is required."
-        },
-        { status: 401 }
-      );
-    }
-
-    const adminUser = await requireAdminFromAccessToken(accessToken);
+    const adminUser = await resolveAdminFromRequest(request);
 
     const body = await request.json().catch(() => ({}));
     const parsed = createServiceSchema.safeParse(body);

@@ -18,6 +18,11 @@ export {
   buildInvitationCodesFeedText
 } from "@/app/docs/content-invitation";
 
+export {
+  cliSections,
+  buildCliFeedText
+} from "@/app/docs/content-cli";
+
 import { DOC_VERSION } from "@/app/docs/content-base";
 import {
   endpointSpecs,
@@ -32,6 +37,7 @@ import {
   invitationCodeSteps,
   buildInvitationCodesFeedText
 } from "@/app/docs/content-invitation";
+import { buildCliFeedText } from "@/app/docs/content-cli";
 
 export const machineReadableSpec = {
   docVersion: DOC_VERSION,
@@ -80,6 +86,8 @@ export function buildAiFeedText(): string {
   lines.push(buildAuthFeedText());
   lines.push("");
   lines.push(buildInvitationCodesFeedText());
+  lines.push("");
+  lines.push(buildCliFeedText());
   lines.push("");
   lines.push("## Machine Readable JSON");
   lines.push(JSON.stringify(machineReadableSpec, null, 2));

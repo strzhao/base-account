@@ -43,6 +43,7 @@ model User {
   updatedAt   DateTime    @updatedAt
   sessions    Session[]
   consents    ServiceConsent[]
+  apiKeys     ApiKey[]
   createdInvitations  InvitationCode[] @relation("createdInvitations")
   redeemedInvitations InvitationCode[] @relation("redeemedInvitations")
 
@@ -141,6 +142,21 @@ model InvitationCode {
   @@index([serviceKey, creatorId])
   @@index([serviceKey, status])
   @@index([redeemedBy])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String
+  userId      String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model JwkKey {

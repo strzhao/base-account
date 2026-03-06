@@ -1,5 +1,6 @@
 import { buildAiFeedText } from "@/app/docs/content";
 import { buildAuthFeedText } from "@/app/docs/content-auth";
+import { buildCliFeedText } from "@/app/docs/content-cli";
 import { buildInvitationCodesFeedText } from "@/app/docs/content-invitation";
 
 export async function GET(request: Request) {
@@ -12,6 +13,8 @@ export async function GET(request: Request) {
       payload = buildAuthFeedText();
     } else if (topic === "invitation-codes") {
       payload = buildInvitationCodesFeedText();
+    } else if (topic === "cli") {
+      payload = buildCliFeedText();
     } else {
       payload = buildAiFeedText();
     }

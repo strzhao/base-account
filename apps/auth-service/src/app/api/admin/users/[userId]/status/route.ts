@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError } from "@/server/auth/errors";
-import { readBearerOrAccessCookie } from "@/server/auth/request";
-import { requireAdminFromAccessToken, setUserStatusForAdmin } from "@/server/auth/service";
+import { resolveAdminFromRequest } from "@/server/auth/request";
+import { setUserStatusForAdmin } from "@/server/auth/service";
 
 const statusSchema = z.object({
   status: z.nativeEnum(UserStatus)
@@ -30,18 +30,7 @@ async function parseBody(request: Request): Promise<{ status?: string }> {
 
 export async function POST(request: Request, context: { params: Promise<{ userId: string }> }) {
   try {
-    const accessToken = readBearerOrAccessCookie(request);
-    if (!accessToken) {
-      return NextResponse.json(
-        {
-          error: "missing_access_token",
-          message: "Access token is required."
-        },
-        { status: 401 }
-      );
-    }
-
-    const adminUser = await requireAdminFromAccessToken(accessToken);
+    const adminUser = await resolveAdminFromRequest(request);
 
     const body = await parseBody(request);
     const parsed = statusSchema.safeParse(body);

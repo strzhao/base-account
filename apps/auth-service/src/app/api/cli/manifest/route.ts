@@ -2,16 +2,13 @@ import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/server/auth/errors";
 import { resolveAdminFromRequest } from "@/server/auth/request";
-import { listUsersForAdmin } from "@/server/auth/service";
+import { buildCliManifest } from "@/server/cli/manifest";
 
 export async function GET(request: Request) {
   try {
     await resolveAdminFromRequest(request);
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q") ?? undefined;
-
-    const users = await listUsersForAdmin(query);
-    return NextResponse.json({ users });
+    const manifest = buildCliManifest();
+    return NextResponse.json(manifest);
   } catch (error) {
     return handleRouteError(error);
   }
