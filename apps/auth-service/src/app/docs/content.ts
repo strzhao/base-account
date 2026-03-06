@@ -41,7 +41,7 @@ import { buildCliFeedText } from "@/app/docs/content-cli";
 
 export const machineReadableSpec = {
   docVersion: DOC_VERSION,
-  generatedAt: "2026-03-06",
+  generatedAt: "2026-03-06.3",
   service: "base-account-auth",
   issuer: "https://user.stringzhao.life",
   audience: "base-account-client",

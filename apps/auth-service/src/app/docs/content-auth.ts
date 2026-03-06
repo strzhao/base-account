@@ -16,8 +16,8 @@ export const quickStartSteps: QuickStep[] = [
     detail: "在 Admin Console 的 Services 区域先登记/启用 origin，再让外部服务发起授权。"
   },
   {
-    title: "处理回跳并拉取用户态",
-    detail: "回跳后先校验 state，再调用 /api/auth/me（credentials: include）获取当前用户。"
+    title: "处理回跳并建立应用会话",
+    detail: "回跳后在服务端读取共享 access_token cookie 验签 JWT，提取用户 email，然后创建应用自有的 gateway session cookie（HMAC 签名的 email + 过期时间）。重要：不要直接依赖共享 access_token cookie 作为日常登录态，否则跨应用切换账号会导致身份污染。"
   },
   {
     title: "按需接入 JWT 校验",
@@ -260,7 +260,7 @@ window.location.href =
   },
   {
     id: "frontend-authorize-callback",
-    title: "回跳校验 + 获取用户态",
+    title: "回跳校验 + 获取用户态（简易版）",
     runtime: "Browser / Web App",
     code: `// 发起授权前保存 state
 const state = crypto.randomUUID();
@@ -278,11 +278,115 @@ if (authorized !== "1") {
   throw new Error("authorization not completed");
 }
 
+// 注意：此方式直接依赖共享 access_token cookie，
+// 跨应用切换账号时会导致身份污染。
+// 生产环境推荐使用下方的 "Gateway Session 模式"。
 const me = await fetch("https://user.stringzhao.life/api/auth/me", {
   credentials: "include"
 }).then((r) => r.json());
 
 console.log("authorized user:", me.email);`
+  },
+  {
+    id: "next-gateway-session",
+    title: "Next.js Gateway Session 模式（推荐）",
+    runtime: "Next.js App Router",
+    code: `// ============================================================
+// 推荐模式：每个应用创建自己的 gateway session cookie，
+// 不直接依赖共享的 access_token cookie 作为日常登录态。
+//
+// 原因：access_token cookie 在 .stringzhao.life 域共享，
+// 任一子域应用的登录/切换会覆盖其他应用的登录态。
+// ============================================================
+
+// --- 1. lib/auth-gateway-session.ts ---
+// HMAC-SHA256 签名的 cookie，存储 email + 过期时间
+
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+
+const COOKIE_NAME = "my_app_gateway_session"; // 每个应用使用不同名称
+
+function secret(): string {
+  return process.env.AUTH_GATEWAY_SESSION_SECRET || "dev-secret";
+}
+
+function sign(payload: string): string {
+  return crypto.createHmac("sha256", secret())
+    .update(payload).digest("base64url");
+}
+
+export function createSession(email: string, ttl = 43_200): string {
+  const now = Date.now();
+  const data = JSON.stringify({
+    email: email.trim().toLowerCase(),
+    issuedAt: now,
+    expiresAt: now + ttl * 1000,
+  });
+  const encoded = Buffer.from(data).toString("base64url");
+  return encoded + "." + sign(encoded);
+}
+
+export function verifySession(raw: string) {
+  const [encoded, sig] = raw.split(".", 2);
+  if (!encoded || !sig) return null;
+  const expected = sign(encoded);
+  try {
+    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig)))
+      return null;
+  } catch { return null; }
+  const parsed = JSON.parse(
+    Buffer.from(encoded, "base64url").toString()
+  );
+  if (Date.now() > parsed.expiresAt) return null;
+  return { email: parsed.email };
+}
+
+export function applySessionCookie(res: NextResponse, value: string) {
+  res.cookies.set({
+    name: COOKIE_NAME, value, path: "/",
+    httpOnly: true, secure: true, sameSite: "lax",
+    maxAge: 43_200,
+  });
+}
+
+// --- 2. app/api/auth/session/finalize/route.ts ---
+// 回跳后调用此接口：读取共享 access_token → 验签 JWT → 创建本地会话
+
+import { jwtVerify } from "jose";
+
+export async function POST(request: Request) {
+  // 从 cookie 中读取共享 access_token（一次性使用）
+  const cookies = request.headers.get("cookie") || "";
+  const match = cookies.match(/access_token=([^;]+)/);
+  const accessToken = match ? decodeURIComponent(match[1]) : "";
+
+  if (!accessToken) {
+    return Response.json({ error: "missing_access_token" }, { status: 401 });
+  }
+
+  // JWT 验签
+  const { payload } = await jwtVerify(accessToken, jwksResolver, {
+    issuer: process.env.AUTH_ISSUER,
+    audience: process.env.AUTH_AUDIENCE,
+  });
+
+  // 创建应用自有的 gateway session cookie
+  const res = NextResponse.json({ ok: true, email: payload.email });
+  applySessionCookie(res, createSession(payload.email as string));
+  return res;
+}
+
+// --- 3. 中间件或页面：检查 gateway session ---
+
+export async function middleware(request: NextRequest) {
+  const raw = request.cookies.get(COOKIE_NAME)?.value;
+  const session = raw ? verifySession(raw) : null;
+  if (!session) {
+    return NextResponse.redirect(new URL("/auth/start", request.url));
+  }
+  return NextResponse.next();
+}`
   }
 ];
 
@@ -296,6 +400,7 @@ export const rolloutChecklist: string[] = [
   "AUTH_ALLOWED_RETURN_SUFFIXES 建议配置为 .stringzhao.life,.vercel.app（一次覆盖你全部 Vercel 服务）。",
   "外部服务统一从 /authorize 进入登录授权流程，不直接拼接 /login。",
   "业务接口对 401/403/429 做显式处理，不把鉴权失败当系统异常。",
+  "access_token / refresh_token cookie 在 .stringzhao.life 域共享，任一子域的登录/切换会覆盖所有子域的登录态。接入方应创建应用自有的 gateway session cookie（参考模板），避免跨应用账号污染。",
   "上线后至少做一次 send-code / verify-code / me 全链路回归。"
 ];
 
@@ -305,7 +410,7 @@ export const externalIntegrationChecklist: string[] = [
   "发起授权前生成并持久化 state（建议 randomUUID + sessionStorage）。",
   "回跳后必须校验 authorized=1 且 returned state 与本地 state 完全一致。",
   "每个业务回跳域名（return_to origin）需先在 /admin -> Services 开通并启用。",
-  "前端登录态读取继续使用 /api/auth/me，并携带 credentials: include。",
+  "回跳后在服务端读取共享 access_token cookie 并验签 JWT（避免前端 CORS），然后创建应用自有的 gateway session cookie 作为日常登录态。不建议直接依赖共享 access_token cookie（跨应用账号污染风险）。",
   "后端 JWT 验签配置保持一致：AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL。",
   "业务侧显式处理 400 invalid_service / 400 invalid_return_to / 401 invalid_access_token。",
   "上线前至少完成首次授权、重复授权直跳、停用服务拦截、icon 展示回退四项回归。"
@@ -335,6 +440,10 @@ export const troubleshooting: Array<{ title: string; fix: string }> = [
   {
     title: "回跳后 state mismatch",
     fix: "确认发起授权前本地持久化 state，并在回跳时严格比对 returned state。"
+  },
+  {
+    title: "跨应用账号被覆盖",
+    fix: "access_token cookie 在 .stringzhao.life 域共享，任一子域的登录/切换会影响所有子域。解决方案：每个应用创建自己的 gateway session cookie（如 ai_todo_gateway_session），回跳后一次性读取 access_token 验签 JWT 建立本地会话，后续不再依赖共享 cookie。"
   }
 ];
 
