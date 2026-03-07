@@ -6,6 +6,7 @@ export type AuthorizeQueryInput = {
   service: string | string[] | undefined;
   return_to: string | string[] | undefined;
   state: string | string[] | undefined;
+  prompt?: string | string[] | undefined;
 };
 
 export type AuthorizeRequest = {
@@ -15,6 +16,7 @@ export type AuthorizeRequest = {
   consentSummary: string;
   returnTo: string;
   state: string;
+  prompt?: string;
 };
 
 function getSingleValue(raw: string | string[] | undefined): string | undefined {
@@ -100,6 +102,7 @@ function validateState(rawState: string): string {
 export async function parseAuthorizeRequest(input: AuthorizeQueryInput): Promise<AuthorizeRequest> {
   const returnToRaw = requireQueryValue("return_to", input.return_to);
   const stateRaw = requireQueryValue("state", input.state);
+  const promptRaw = getSingleValue(input.prompt);
 
   // `service` query is kept for backward compatibility but ignored by server-side service resolution.
   getSingleValue(input.service);
@@ -112,11 +115,12 @@ export async function parseAuthorizeRequest(input: AuthorizeQueryInput): Promise
     serviceIconUrl: service.serviceIconUrl,
     consentSummary: service.consentSummary,
     returnTo: normalizedReturnTo,
-    state: validateState(stateRaw)
+    state: validateState(stateRaw),
+    ...(promptRaw === "select_account" ? { prompt: "select_account" } : {}),
   };
 }
 
-export function buildAuthorizeQuery(input: Pick<AuthorizeRequest, "serviceId" | "returnTo" | "state">): string {
+export function buildAuthorizeQuery(input: Pick<AuthorizeRequest, "serviceId" | "returnTo" | "state" | "prompt">): string {
   const searchParams = new URLSearchParams();
   searchParams.set("service", input.serviceId);
   searchParams.set("return_to", input.returnTo);

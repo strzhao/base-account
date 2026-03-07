@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ApproveConsentForm } from "@/app/authorize/approve-consent-form";
+import { AccountSelector } from "@/app/authorize/account-selector";
 import { ServiceIcon } from "@/app/authorize/service-icon";
 import styles from "@/app/authorize/authorize.module.css";
 import { buildAuthorizeCallback, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
@@ -63,7 +64,8 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
     authorizeRequest = await parseAuthorizeRequest({
       service: params.service,
       return_to: params.return_to,
-      state: params.state
+      state: params.state,
+      prompt: params.prompt
     });
   } catch (error) {
     const message = error instanceof AuthError ? error.message : "授权请求参数无效。";
@@ -144,8 +146,31 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
     );
   }
 
-  if (consentGranted) {
+  if (consentGranted && authorizeRequest.prompt !== "select_account") {
     redirect(buildAuthorizeCallback(authorizeRequest.returnTo, authorizeRequest.state) as Route);
+  }
+
+  if (consentGranted && authorizeRequest.prompt === "select_account") {
+    const callbackUrl = buildAuthorizeCallback(authorizeRequest.returnTo, authorizeRequest.state);
+    return (
+      <main className={styles.root}>
+        <section className={styles.shell}>
+          <div className={styles.panel}>
+            <p className={styles.kicker}>统一授权</p>
+            <div className={styles.serviceHeader}>
+              <ServiceIcon serviceName={authorizeRequest.serviceName} iconUrl={authorizeRequest.serviceIconUrl} />
+              <h1 className={styles.title}>选择账号</h1>
+            </div>
+            <AccountSelector
+              email={currentUser.email}
+              callbackUrl={callbackUrl}
+              loginPath={buildLoginRedirectPath(authorizeRequest)}
+              serviceName={authorizeRequest.serviceName}
+            />
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (

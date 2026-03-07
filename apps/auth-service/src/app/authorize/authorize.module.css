@@ -150,6 +150,50 @@
   text-decoration: none;
 }
 
+.accountOption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease;
+  text-align: left;
+}
+
+.accountOption:hover {
+  background: rgba(94, 125, 114, 0.08);
+  border-color: #c8c2b5;
+}
+
+.accountAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5e7d72 0%, #6f5f4d 100%);
+  color: #f9f6ef;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.accountEmail {
+  flex: 1;
+  color: #2e332f;
+  font-weight: 500;
+}
+
+.accountAction {
+  font-size: 13px;
+  color: #71695c;
+}
+
 @media (max-width: 640px) {
   .shell {
     padding: 28px 12px 40px;
