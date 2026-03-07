@@ -159,6 +159,17 @@ model ApiKey {
   @@index([userId])
 }
 
+model CliAuthCode {
+  id         String    @id @default(cuid())
+  codeHash   String    @unique
+  userId     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
 model JwkKey {
   id                  String   @id @default(cuid())
   kid                 String   @unique
