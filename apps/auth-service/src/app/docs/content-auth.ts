@@ -30,8 +30,10 @@ export const endpointSpecs: EndpointSpec[] = [
     method: "GET",
     path: "/authorize",
     auth: "none",
-    purpose: "统一授权入口。后端基于 return_to 的 origin 识别服务，未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。",
-    requestExample: `?return_to=https%3A%2F%2Fai-todo.stringzhao.life%2Fauth%2Fcallback&state=opaque-state`,
+    purpose: "统一授权入口。后端基于 return_to 的 origin 识别服务，未登录跳转登录页，已登录则按 consent 状态决定是否直接回跳。可选参数 prompt=select_account：即使已授权，也强制显示账号选择界面（用于多账号切换场景）。",
+    requestExample: `?return_to=https%3A%2F%2Fai-todo.stringzhao.life%2Fauth%2Fcallback&state=opaque-state
+# 账号切换模式：
+?return_to=...&state=...&prompt=select_account`,
     responseExample: `302 -> /login?... 或 302 -> return_to?authorized=1&state=opaque-state`,
     errorNotes: ["400 invalid_authorize_request", "400 invalid_return_to", "400 invalid_service", "400 invalid_state"]
   },
@@ -387,6 +389,36 @@ export async function middleware(request: NextRequest) {
   }
   return NextResponse.next();
 }`
+  },
+  {
+    id: "account-switching",
+    title: "账号切换（多账号场景）",
+    runtime: "Browser / Web App",
+    code: `// ============================================================
+// 账号切换：清除本地会话后跳转 /authorize?prompt=select_account
+// 用户将在账号中心看到所有历史登录过的邮箱，可直接选择或登录新账号。
+// 注意：不要调用 base-account 的 /api/auth/logout，
+// 保留 base-account 登录态才能显示当前账号。
+// ============================================================
+
+// --- 方式一：纯前端（适用于无 gateway session 的 SPA）---
+
+function switchAccount() {
+  const state = crypto.randomUUID();
+  sessionStorage.setItem("auth_state", state);
+
+  const returnTo = encodeURIComponent(window.location.origin + "/auth/callback");
+  window.location.href =
+    "https://user.stringzhao.life/authorize" +
+    "?return_to=" + returnTo +
+    "&state=" + encodeURIComponent(state) +
+    "&prompt=select_account";
+}
+
+// --- 方式二：服务端路由（适用于有 gateway session 的 Next.js 应用）---
+// 创建 /api/auth/switch-account 路由，清除本地 gateway session cookie
+// 后重定向到 /authorize?...&prompt=select_account。
+// 前端按钮直接 window.location.href = "/api/auth/switch-account"。`
   }
 ];
 
@@ -413,7 +445,8 @@ export const externalIntegrationChecklist: string[] = [
   "回跳后在服务端读取共享 access_token cookie 并验签 JWT（避免前端 CORS），然后创建应用自有的 gateway session cookie 作为日常登录态。不建议直接依赖共享 access_token cookie（跨应用账号污染风险）。",
   "后端 JWT 验签配置保持一致：AUTH_ISSUER、AUTH_AUDIENCE、AUTH_JWKS_URL。",
   "业务侧显式处理 400 invalid_service / 400 invalid_return_to / 401 invalid_access_token。",
-  "上线前至少完成首次授权、重复授权直跳、停用服务拦截、icon 展示回退四项回归。"
+  "上线前至少完成首次授权、重复授权直跳、停用服务拦截、icon 展示回退四项回归。",
+  "如需账号切换功能，跳转 /authorize 时附加 prompt=select_account 参数。已授权用户将看到账号选择界面，可选择当前账号、历史登录账号或登录新账号。"
 ];
 
 export const troubleshooting: Array<{ title: string; fix: string }> = [
