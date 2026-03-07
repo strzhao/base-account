@@ -65,7 +65,8 @@ function LoginPageFallback() {
 function LoginPageContent() {
   const searchParams = useSearchParams();
 
-  const [email, setEmail] = useState("");
+  const prefillEmail = searchParams.get("email")?.trim().toLowerCase() || "";
+  const [email, setEmail] = useState(prefillEmail);
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [busy, setBusy] = useState(false);
@@ -187,6 +188,14 @@ function LoginPageContent() {
       }
 
       setMessage("登录成功，正在跳转...");
+
+      // 记录已登录邮箱到 localStorage
+      try {
+        const accounts: string[] = JSON.parse(localStorage.getItem("known_accounts") || "[]");
+        const filtered = accounts.filter((a) => a !== normalizedEmail);
+        filtered.unshift(normalizedEmail);
+        localStorage.setItem("known_accounts", JSON.stringify(filtered));
+      } catch { /* ignore */ }
 
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
