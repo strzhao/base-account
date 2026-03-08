@@ -32,6 +32,12 @@ export type AdminServiceDTO = {
   updatedAt: string;
 };
 
+export type LinkedEmailDTO = {
+  id: string;
+  email: string;
+  createdAt: string;
+};
+
 export type AdminServiceSuggestionDTO = {
   origin: string;
   hostname: string;

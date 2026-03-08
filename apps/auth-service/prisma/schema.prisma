@@ -14,6 +14,7 @@ enum UserStatus {
 
 enum EmailCodePurpose {
   LOGIN
+  LINK_EMAIL
 }
 
 enum ActorType {
@@ -44,6 +45,7 @@ model User {
   sessions    Session[]
   consents    ServiceConsent[]
   apiKeys     ApiKey[]
+  linkedEmails LinkedEmail[]
   createdInvitations  InvitationCode[] @relation("createdInvitations")
   redeemedInvitations InvitationCode[] @relation("redeemedInvitations")
 
@@ -177,4 +179,14 @@ model JwkKey {
   privateKeyEncrypted String
   status              String
   createdAt           DateTime @default(now())
+}
+
+model LinkedEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

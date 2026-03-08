@@ -12,6 +12,8 @@ export default function HomePage() {
           <div className={styles.actions}>
             <Link href="/login" className={styles.link}>进入登录</Link>
             <span className={styles.dot}>·</span>
+            <Link href="/account" className={styles.link}>账号设置</Link>
+            <span className={styles.dot}>·</span>
             <Link href="/admin" className={styles.link}>管理控制台</Link>
             <span className={styles.dot}>·</span>
             <Link href="/docs" className={styles.link}>接入文档</Link>
