@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { ApproveConsentForm } from "@/app/authorize/approve-consent-form";
 import { AccountSelector } from "@/app/authorize/account-selector";
 import { ServiceIcon } from "@/app/authorize/service-icon";
+import LoginPage from "@/app/login/page";
 import styles from "@/app/authorize/authorize.module.css";
 import { buildAuthorizeCallback, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
 import { AuthError } from "@/server/auth/errors";
@@ -90,7 +91,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
   const accessToken = readAccessFromCookieHeader(requestHeaders.get("cookie") ?? "");
 
   if (!accessToken) {
-    redirect(buildLoginRedirectPath(authorizeRequest) as Route);
+    return <LoginPage />;
   }
 
   let currentUser;
@@ -98,7 +99,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
     currentUser = await getCurrentUserFromAccessToken(accessToken);
   } catch (error) {
     if (isAuthFailure(error)) {
-      redirect(buildLoginRedirectPath(authorizeRequest) as Route);
+      return <LoginPage />;
     }
 
     console.error("[authorize] Failed to load current user", error);
