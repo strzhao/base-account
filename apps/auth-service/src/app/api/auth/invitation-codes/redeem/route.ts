@@ -24,7 +24,8 @@ export async function POST(request: Request) {
 
     const result = await redeemInvitationCode({
       code: parsed.data.code,
-      userId: user.id
+      userId: user.id,
+      userEmail: user.email
     });
 
     return NextResponse.json({ success: true, ...result });

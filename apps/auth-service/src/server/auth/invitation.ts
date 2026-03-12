@@ -2,7 +2,7 @@ import { ActorType, InvitationCodeStatus, Prisma } from "@prisma/client";
 
 import { getEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import { generateInvitationCode } from "@/lib/security";
+import { generateInvitationCode, normalizeEmail } from "@/lib/security";
 
 import { AuthError } from "@/server/auth/errors";
 
@@ -106,6 +106,7 @@ export async function createInvitationCode(input: {
 export async function redeemInvitationCode(input: {
   code: string;
   userId: string;
+  userEmail?: string;
 }): Promise<{ serviceKey: string; creatorId: string }> {
   const normalized = input.code.trim().toUpperCase();
 
@@ -125,7 +126,14 @@ export async function redeemInvitationCode(input: {
     throw new AuthError("invalid_invitation_code", "This invitation code is no longer valid.", 400);
   }
 
-  if (record.creatorId === input.userId) {
+  const isAdminRedeemingOwnCode =
+    record.creatorId === input.userId &&
+    Boolean(
+      input.userEmail &&
+        getEnv().adminEmailSet.has(normalizeEmail(input.userEmail))
+    );
+
+  if (record.creatorId === input.userId && !isAdminRedeemingOwnCode) {
     throw new AuthError("self_redeem_not_allowed", "You cannot redeem your own invitation code.", 400);
   }
 
@@ -144,7 +152,11 @@ export async function redeemInvitationCode(input: {
     action: "INVITATION_CODE_REDEEMED",
     targetType: "InvitationCode",
     targetId: record.id,
-    metadata: { serviceKey: record.serviceKey, creatorId: record.creatorId }
+    metadata: {
+      serviceKey: record.serviceKey,
+      creatorId: record.creatorId,
+      selfRedeemedByAdmin: isAdminRedeemingOwnCode
+    }
   });
 
   return { serviceKey: record.serviceKey, creatorId: record.creatorId };

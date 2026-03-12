@@ -55,7 +55,8 @@ export const invitationCodeEndpoints: EndpointSpec[] = [
     method: "POST",
     path: "/api/auth/invitation-codes/redeem",
     auth: "access_token",
-    purpose: "兑换邀请码。仅需传入 code，无需 serviceKey（系统自动从邀请码记录中读取）。一次性使用，兑换后记录邀请关系（谁邀请了谁）。不能兑换自己生成的码。",
+    purpose:
+      "兑换邀请码。仅需传入 code，无需 serviceKey（系统自动从邀请码记录中读取）。一次性使用，兑换后记录邀请关系（谁邀请了谁）。普通用户不能兑换自己生成的邀请码；管理员账号可用于自助开通。",
     requestExample: `{
   "code": "ABCD1234"
 }`,
