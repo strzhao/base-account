@@ -76,16 +76,19 @@ function LoginPageContent() {
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
   const authorizePath = useMemo(() => {
-    const service = searchParams.get("service")?.trim();
     const returnTo = searchParams.get("return_to")?.trim();
     const state = searchParams.get("state")?.trim();
 
-    if (!service || !returnTo || !state) {
+    if (!returnTo || !state) {
       return null;
     }
 
     const query = new URLSearchParams();
-    query.set("service", service);
+    // service 向后兼容：有就透传，没有不阻断（后端已通过 return_to origin 识别服务）
+    const service = searchParams.get("service")?.trim();
+    if (service) {
+      query.set("service", service);
+    }
     query.set("return_to", returnTo);
     query.set("state", state);
     return `/authorize?${query.toString()}`;
