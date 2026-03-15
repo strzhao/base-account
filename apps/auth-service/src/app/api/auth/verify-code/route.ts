@@ -31,11 +31,16 @@ export async function POST(request: Request) {
       client: extractClientMeta(request)
     });
 
+    console.log("[auth:login] success", { email: parsed.data.email });
+
     const response = NextResponse.json(authResult);
     setAuthCookies(response, authResult.accessToken, authResult.refreshToken);
 
     return response;
   } catch (error) {
+    console.warn("[auth:login] failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return handleRouteError(error);
   }
 }

@@ -41,6 +41,8 @@ export async function POST(request: Request) {
       client: extractClientMeta(request)
     });
 
+    console.log("[auth:refresh] success", { isGraceHit: result.isGraceHit });
+
     const response = NextResponse.json(result);
 
     if (result.isGraceHit) {
@@ -53,6 +55,9 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    console.warn("[auth:refresh] failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return handleRouteError(error);
   }
 }

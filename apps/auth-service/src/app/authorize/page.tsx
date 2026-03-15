@@ -11,7 +11,7 @@ import styles from "@/app/authorize/authorize.module.css";
 import { buildAuthorizeCallback, buildLoginRedirectPath, parseAuthorizeRequest } from "@/server/auth/authorize";
 import { AuthError } from "@/server/auth/errors";
 import { getCurrentUserFromAccessToken, hasServiceConsent } from "@/server/auth/service";
-import { readAccessFromCookieHeader } from "@/server/auth/token-cookie";
+import { readAccessFromCookieHeader, readRefreshFromCookieHeader } from "@/server/auth/token-cookie";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -57,6 +57,15 @@ function isAuthFailure(error: unknown): boolean {
   return hasAuthTokenErrorCode(error);
 }
 
+function buildRefreshRedirectPath(params: SearchParams): string {
+  const qs = new URLSearchParams();
+  if (params.service) qs.set("service", String(params.service));
+  if (params.return_to) qs.set("return_to", String(params.return_to));
+  if (params.state) qs.set("state", String(params.state));
+  if (params.prompt) qs.set("prompt", String(params.prompt));
+  return `/api/auth/authorize/refresh-redirect?${qs.toString()}`;
+}
+
 export default async function AuthorizePage({ searchParams }: AuthorizePageProps) {
   const params = await searchParams;
 
@@ -88,9 +97,24 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
   }
 
   const requestHeaders = await headers();
-  const accessToken = readAccessFromCookieHeader(requestHeaders.get("cookie") ?? "");
+  const cookieHeader = requestHeaders.get("cookie") ?? "";
+  const accessToken = readAccessFromCookieHeader(cookieHeader);
+  const alreadyRefreshed = String(params._refreshed ?? "") === "1";
+
+  console.log("[authorize] start", {
+    service: params.service ? String(params.service) : undefined,
+    returnTo: authorizeRequest.returnTo,
+    hasAccessToken: !!accessToken,
+    hasRefreshToken: !!readRefreshFromCookieHeader(cookieHeader),
+    alreadyRefreshed,
+  });
 
   if (!accessToken) {
+    if (!alreadyRefreshed && readRefreshFromCookieHeader(cookieHeader)) {
+      console.log("[authorize] redirect_to_refresh");
+      redirect(buildRefreshRedirectPath(params) as Route);
+    }
+    console.warn("[authorize] show_login", { reason: "no_access_token" });
     return <LoginPage />;
   }
 
@@ -99,6 +123,14 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
     currentUser = await getCurrentUserFromAccessToken(accessToken);
   } catch (error) {
     if (isAuthFailure(error)) {
+      console.warn("[authorize] access_token_expired", {
+        error: error instanceof Error ? error.name : String(error),
+      });
+      if (!alreadyRefreshed && readRefreshFromCookieHeader(cookieHeader)) {
+        console.log("[authorize] redirect_to_refresh", { reason: "token_expired" });
+        redirect(buildRefreshRedirectPath(params) as Route);
+      }
+      console.warn("[authorize] show_login", { reason: "token_expired_no_refresh" });
       return <LoginPage />;
     }
 
@@ -148,6 +180,10 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
   }
 
   if (consentGranted && authorizeRequest.prompt !== "select_account") {
+    console.log("[authorize] auto_authorize", {
+      email: currentUser.email,
+      service: authorizeRequest.serviceId,
+    });
     redirect(buildAuthorizeCallback(authorizeRequest.returnTo, authorizeRequest.state) as Route);
   }
 
